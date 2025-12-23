@@ -24,7 +24,7 @@ interface HospitalChatbotProps {
 export default function HospitalChatbot({ uniqueId }: HospitalChatbotProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [showQueries, setShowQueries] = useState(false)
-  const [autoPopupIndex, setAutoPopupIndex] = useState(0) // Tracks which popup to show
+  const [autoPopupIndex, setAutoPopupIndex] = useState(0) // Tracks which popup to highlight in sequence
   const [messages, setMessages] = useState<Message[]>([])
   const [inputValue, setInputValue] = useState("")
   const [replyingTo, setReplyingTo] = useState<Message | null>(null)
@@ -45,27 +45,27 @@ export default function HospitalChatbot({ uniqueId }: HospitalChatbotProps) {
     scrollToBottom()
   }, [messages])
 
-  // Auto-show query popups one by one every 1 second when chat is closed
+  // Auto-show all three queries one by one (highlighting effect) every few seconds when chat is closed
   useEffect(() => {
     if (isOpen || showQueries) return
 
-    const queries = ["Book an Appointment", "Upload Medical Report", "Talk to AI Health Assistant"]
     let index = 0
 
     const showNext = () => {
-      if (index < queries.length) {
+      if (index < 3) {
         setAutoPopupIndex(index)
         setShowQueries(true)
 
         autoPopupTimeoutRef.current = setTimeout(() => {
           setShowQueries(false)
           index++
-          setTimeout(showNext, 500) // Small delay before next one appears
-        }, 2000) // Each popup visible for ~2s
+          setTimeout(() => {
+            if (index < 3) showNext()
+          }, 500) // Delay before next highlight
+        }, 2000) // Each highlight visible for ~2s
       }
     }
 
-    // Start after initial delay of 1s
     autoPopupTimeoutRef.current = setTimeout(showNext, 1000)
 
     return () => {
@@ -83,6 +83,7 @@ export default function HospitalChatbot({ uniqueId }: HospitalChatbotProps) {
       clearTimeout(autoPopupTimeoutRef.current)
     }
     setShowQueries(true)
+    setAutoPopupIndex(-1) // Remove any auto-highlight when manually hovering
   }
 
   // Handle mouse leave from the entire container
@@ -206,32 +207,32 @@ export default function HospitalChatbot({ uniqueId }: HospitalChatbotProps) {
           {/* Persistent Label on the Left */}
           {!isOpen && (
             <div className="absolute right-full mr-4 whitespace-nowrap pointer-events-none">
-              <span className="bg-gradient-to-r from-green-600 to-emerald-600 text-white text-sm font-medium px-4 py-2 rounded-full shadow-lg">
-                Need Help? Chat with AI
+              <span className="bg-linear-to-r from-green-600 to-emerald-600 text-white text-sm font-medium px-4 py-2 rounded-full shadow-lg">
+                Chat with SANA AI
               </span>
             </div>
           )}
 
-          {/* Smart Popup Queries - Auto or Hover */}
+          {/* Smart Popup Queries - All three on hover or auto sequence */}
           {showQueries && !isOpen && (
             <div className="absolute bottom-20 right-0 flex flex-col gap-3 mb-2 animate-in fade-in slide-in-from-bottom-4 duration-300">
-              {queryOptions
-                .filter((_, i) => autoPopupIndex >= 0 ? i === autoPopupIndex : true) // Show only current in auto mode
-                .reverse()
-                .map((query, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => handleQueryClick(query.type)}
-                    className="group px-5 py-3 bg-white/80 backdrop-blur-xl border border-white/30 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
-                  >
-                    <div className="flex items-center gap-3 whitespace-nowrap">
-                      <span className="text-2xl">{query.emoji}</span>
-                      <span className="text-sm font-medium text-gray-700 group-hover:text-green-600 transition-colors">
-                        {query.text}
-                      </span>
-                    </div>
-                  </button>
-                ))}
+              {queryOptions.map((query, index) => (
+                <button
+                  key={query.type}
+                  onClick={() => handleQueryClick(query.type)}
+                  className={cn(
+                    " px-5 py-2.5 backdrop-blur-xl border border-white/30 hover:border-green-500 rounded-full transition-all duration-300 hover:scale-105",
+                    autoPopupIndex === index && "ring-4 ring-green-400 ring-offset-2" // Optional highlight during auto sequence  
+                  )}
+                >
+                  <div className="flex items-center gap-3 whitespace-nowrap">
+                    <span className="text-xl">{query.emoji}</span>
+                    <span className="text-sm font-medium text-gray-700 group-hover:text-green-600 transition-colors">
+                      {query.text}
+                    </span>
+                  </div>
+                </button>
+              ))}
             </div>
           )}
 
@@ -239,36 +240,39 @@ export default function HospitalChatbot({ uniqueId }: HospitalChatbotProps) {
           {!isOpen && (
             <button
               onClick={() => setIsOpen(true)}
-              className="w-16 h-16 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center justify-center group relative animate-in fade-in zoom-in"
+              className="w-16 h-16 rounded-full bg-linear-to-br from-green-500 to-emerald-600 shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center justify-center group relative animate-in fade-in zoom-in"
             >
               <div className="absolute inset-0 rounded-full bg-green-400 animate-ping opacity-20" />
-              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 opacity-75 group-hover:opacity-100 transition-opacity" />
+              <div className="absolute inset-0 rounded-full bg-linear-to-br from-green-500 to-emerald-600 opacity-75 group-hover:opacity-100 transition-opacity" />
 
-              <svg className="w-8 h-8 text-white relative z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              {/* <svg className="w-8 h-8 text-white relative z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-              </svg>
+              </svg> */}
+
+             
+
             </button>
           )}
         </div>
       </div>
 
-      {/* Chat Window - unchanged from your original */}
+      {/* Chat Window - completely unchanged */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 z-50 w-[400px] max-w-[calc(100vw-3rem)] animate-in fade-in slide-in-from-bottom-8 duration-500">
+        <div className="fixed bottom-6 right-6 z-50 w-100 h-160 max-w-[calc(100vw-3rem)] animate-in fade-in slide-in-from-bottom-8 duration-500">
           <div className="bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-100">
             {/* Header */}
-            <div className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 px-6 py-4 flex items-center justify-between">
+            <div className="bg-linear-to-r from-green-600 via-emerald-600 to-teal-600 px-6 py-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
-                  <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  {/* <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                  </svg>
+                  </svg> */}
                 </div>
                 <div>
                   <h3 className="text-white font-semibold text-base">MediCare Hospital</h3>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <div className="w-2 h-2 bg-green-300 rounded-full animate-pulse" />
-                    <p className="text-white/90 text-xs">AI Assistant • Online</p>
+                    <p className="text-white/90 text-xs">Sana AI Assistant • Online</p>
                   </div>
                 </div>
               </div>
@@ -298,7 +302,7 @@ export default function HospitalChatbot({ uniqueId }: HospitalChatbotProps) {
             </div>
 
             {/* Messages Area */}
-            <div className="h-[450px] overflow-y-auto px-6 py-4 bg-gradient-to-b from-gray-50 to-white">
+            <div className="h-112.5 overflow-y-auto px-6 py-4 bg-linear-to-b from-gray-50 to-white">
               {messages.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center px-4">
                   <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
@@ -311,7 +315,7 @@ export default function HospitalChatbot({ uniqueId }: HospitalChatbotProps) {
                       />
                     </svg>
                   </div>
-                  <h4 className="text-lg font-semibold text-gray-900 mb-2">Welcome to MediCare</h4>
+                  <h4 className="text-lg font-semibold text-gray-900 mb-2">Welcome to SanaAi</h4>
                   <p className="text-sm text-gray-600 leading-relaxed">
                     Your AI health assistant is ready to help. Choose a quick action or type your message below.
                   </p>
@@ -362,8 +366,8 @@ export default function HospitalChatbot({ uniqueId }: HospitalChatbotProps) {
                             className={cn(
                               "px-4 py-3 rounded-2xl shadow-sm transition-all duration-300",
                               message.type === "user"
-                                ? "bg-gradient-to-br from-green-500 via-emerald-500 to-green-600 text-white rounded-br-sm"
-                                : "bg-gradient-to-br from-green-50 to-emerald-50 text-gray-800 border border-green-100 rounded-bl-sm",
+                                ? "bg-linear-to-br from-green-500 via-emerald-500 to-green-600 text-white rounded-br-sm"
+                                : "bg-linear-to-br from-green-50 to-emerald-50 text-gray-800 border border-green-100 rounded-bl-sm",
                             )}
                           >
                             <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
@@ -421,7 +425,7 @@ export default function HospitalChatbot({ uniqueId }: HospitalChatbotProps) {
                   </div>
                   <button
                     onClick={() => setReplyingTo(null)}
-                    className="p-1 hover:bg-green-100 rounded transition-colors flex-shrink-0"
+                    className="p-1 hover:bg-green-100 rounded transition-colors shrink-0"
                   >
                     <svg className="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -443,15 +447,22 @@ export default function HospitalChatbot({ uniqueId }: HospitalChatbotProps) {
                 <Button
                   onClick={handleSendMessage}
                   disabled={!inputValue.trim()}
-                  className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm hover:shadow-md flex items-center justify-center p-0 mb-0.5"
+                  className="w-10 h-10 rounded-xl bg-linear-to-br from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm hover:shadow-md flex items-center justify-center p-0 mb-0.5"
                 >
                   <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                   </svg>
                 </Button>
               </div>
+               <div className="text-xs text-gray-400 mt-2 text-center">
+            Powered by &nbsp;
+            <span className="text-green-600 font-bold">
+              EMRCHains
+            </span>
+          </div>
             </div>
           </div>
+         
         </div>
       )}
     </>

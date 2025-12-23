@@ -6,7 +6,7 @@ export default function Page() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50">
       {/* Demo content */}
-      <div className="container mx-auto px-4 py-16">
+      {/* <div className="container mx-auto px-4 py-16">
         <div className="max-w-4xl mx-auto text-center space-y-8">
           <h1 className="text-5xl font-bold text-gray-900">Welcome to MediCare Hospital</h1>
           <p className="text-xl text-gray-600 leading-relaxed">
@@ -56,7 +56,7 @@ export default function Page() {
             </div>
           </div>
         </div>
-      </div>
+      </div> */}
 
       {/* Hospital Chatbot */}
       <HospitalChatbot />
