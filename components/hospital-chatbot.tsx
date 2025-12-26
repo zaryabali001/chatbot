@@ -197,7 +197,7 @@ export default function HospitalChatbot({ uniqueId }: HospitalChatbotProps) {
   return (
     <>
       {/* Floating Chatbot Icon with Left Label */}
-      <div className="fixed bottom-6 right-6 z-50">
+      <div className="fixed bottom-6 right-6 z-50 ">
         <div
           ref={containerRef}
           className="relative flex items-center gap-4"
@@ -462,9 +462,10 @@ export default function HospitalChatbot({ uniqueId }: HospitalChatbotProps) {
           </div>
             </div>
           </div>
-         
         </div>
       )}
+    
+   
     </>
   )
 }

@@ -4,7 +4,7 @@ import HospitalChatbot from "@/components/hospital-chatbot";
 
 export default function Page() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50">
+    <div className="bg-transparent">
       {/* Demo content */}
       {/* <div className="container mx-auto px-4 py-16">
         <div className="max-w-4xl mx-auto text-center space-y-8">
