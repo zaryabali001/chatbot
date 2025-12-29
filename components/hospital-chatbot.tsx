@@ -25,7 +25,6 @@ interface HospitalConfig {
   buttonImage?: string
 }
 
-// Optional config map for custom logos/buttons per hospital (fallback)
 const HOSPITAL_CONFIGS: Record<string, HospitalConfig> = {
   default: {
     name: "Sana AI Health Assistant",
@@ -37,32 +36,16 @@ const HOSPITAL_CONFIGS: Record<string, HospitalConfig> = {
 export default function HospitalChatbot() {
   const searchParams = useSearchParams()
 
-  // Read from URL query params
+  // Read from plugin via URL: ?user_id=medi-care-123&user_name=MediCare%20Hospital
   const urlUserId = searchParams.get("user_id") || ""
   const urlUserName = searchParams.get("user_name") ? decodeURIComponent(searchParams.get("user_name")!) : ""
-  const urlUniqueId = searchParams.get("unique_id") || "" // For backend routing (same behavior as HTML widget)
 
-  // Final values used in UI
   const uniqueId = urlUserId || "default"
   const hospitalName = urlUserName || HOSPITAL_CONFIGS[uniqueId]?.name || "Your Hospital"
 
-  // Backend unique_id – critical for routing to correct AI model/knowledge base
-  const backendUniqueId = urlUniqueId || urlUserId || "default-hospital-2025"
-
-  // Visual assets
   const config = HOSPITAL_CONFIGS[uniqueId] || HOSPITAL_CONFIGS.default
   const logo = config.logo || "/sana.png"
   const buttonImage = config.buttonImage || "/emr.jpg"
-
-  // Persistent end user ID (like in the HTML version)
-  const [endUserId] = useState<string>(() => {
-    let stored = localStorage.getItem("sana_end_user_id")
-    if (!stored) {
-      stored = crypto.randomUUID?.() || Date.now().toString(36) + Math.random().toString(36).substr(2)
-      localStorage.setItem("sana_end_user_id", stored)
-    }
-    return stored
-  })
 
   const [isOpen, setIsOpen] = useState(false)
   const [showQueries, setShowQueries] = useState(false)
@@ -72,7 +55,6 @@ export default function HospitalChatbot() {
   const [replyingTo, setReplyingTo] = useState<Message | null>(null)
   const [hoveredMessage, setHoveredMessage] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
-  const [isTyping, setIsTyping] = useState(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -88,7 +70,6 @@ export default function HospitalChatbot() {
     scrollToBottom()
   }, [messages])
 
-  // Auto-show queries one by one when closed
   useEffect(() => {
     if (isOpen || showQueries) return
 
@@ -173,15 +154,13 @@ export default function HospitalChatbot() {
     }
   }
 
-  const handleSendMessage = async () => {
+  const handleSendMessage = () => {
     if (!inputValue.trim()) return
-
-    const userText = inputValue.trim()
 
     const userMessage: Message = {
       id: Date.now().toString(),
       type: "user",
-      content: userText,
+      content: inputValue,
       timestamp: new Date(),
       ...(replyingTo && {
         replyTo: {
@@ -194,92 +173,17 @@ export default function HospitalChatbot() {
     setMessages((prev) => [...prev, userMessage])
     setInputValue("")
     setReplyingTo(null)
-    setIsTyping(true)
 
-    // Add typing indicator
-    const typingId = "typing-" + Date.now()
-    const typingMessage: Message = {
-      id: typingId,
-      type: "ai",
-      content: "...",
-      timestamp: new Date(),
-    }
-    setMessages((prev) => [...prev, typingMessage])
-
-    try {
-      const response = await fetch("https://sana.emrchains.com/api3/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          query: userText,
-          unique_id: backendUniqueId, // ← Same functional behavior as HTML widget
-          end_user_id: endUserId,
-          history: messages
-            .filter((m) => m.id !== typingId)
-            .map((m) => `${m.type === "user" ? "User" : "Assistant"}: ${m.content}`),
-        }),
-      })
-
-      let botResponse = ""
-
-      if (response.body) {
-        const reader = response.body.getReader()
-        const decoder = new TextDecoder()
-
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-          const chunk = decoder.decode(value, { stream: true })
-          botResponse += chunk
-
-          setMessages((prev) => {
-            const filtered = prev.filter((m) => m.id !== typingId)
-            return [
-              ...filtered,
-              {
-                id: Date.now().toString(),
-                type: "ai",
-                content: botResponse,
-                timestamp: new Date(),
-              },
-            ]
-          })
-          scrollToBottom()
-        }
-      } else {
-        botResponse = await response.text()
-        setMessages((prev) => {
-          const filtered = prev.filter((m) => m.id !== typingId)
-          return [
-            ...filtered,
-            {
-              id: Date.now().toString(),
-              type: "ai",
-              content: botResponse,
-              timestamp: new Date(),
-            },
-          ]
-        })
+    // Simulated AI response (local, no external API)
+    setTimeout(() => {
+      const aiMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        type: "ai",
+        content: `Thank you for reaching out to ${hospitalName}. I understand your concern. Our medical team will review this shortly. In the meantime, would you like to schedule a consultation?`,
+        timestamp: new Date(),
       }
-    } catch (error) {
-      console.error("Chat API error:", error)
-      setMessages((prev) => {
-        const filtered = prev.filter((m) => m.id !== typingId)
-        return [
-          ...filtered,
-          {
-            id: Date.now().toString(),
-            type: "ai",
-            content: "Sorry, something went wrong. Please try again later.",
-            timestamp: new Date(),
-          },
-        ]
-      })
-    } finally {
-      setIsTyping(false)
-    }
+      setMessages((prev) => [...prev, aiMessage])
+    }, 1000)
   }
 
   const handleCopyMessage = (content: string, id: string) => {
@@ -316,7 +220,6 @@ export default function HospitalChatbot() {
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
         >
-          {/* Persistent Label on the Left */}
           {!isOpen && (
             <div className="absolute right-full mr-4 whitespace-nowrap pointer-events-none">
               <span className="bg-gradient-to-r from-green-600 to-emerald-600 text-white text-sm font-medium px-4 py-2 rounded-full shadow-lg">
@@ -325,7 +228,6 @@ export default function HospitalChatbot() {
             </div>
           )}
 
-          {/* Smart Popup Queries */}
           {showQueries && !isOpen && (
             <div className="absolute bottom-20 right-0 flex flex-col gap-3 mb-2 animate-in fade-in slide-in-from-bottom-4 duration-300">
               {queryOptions.map((query, index) => (
@@ -348,7 +250,6 @@ export default function HospitalChatbot() {
             </div>
           )}
 
-          {/* Main Chatbot Icon */}
           {!isOpen && (
             <button
               onClick={() => setIsOpen(true)}
@@ -361,11 +262,10 @@ export default function HospitalChatbot() {
         </div>
       </div>
 
-      {/* Chat Window */}
+      {/* Chat Window – completely unchanged UI */}
       {isOpen && (
         <div className="fixed bottom-6 right-6 z-50 w-100 h-160 max-w-[calc(100vw-3rem)] animate-in fade-in slide-in-from-bottom-8 duration-500">
           <div className="bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-100">
-            {/* Header */}
             <div className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 px-6 py-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 backdrop-blur-sm rounded-full flex items-center justify-center overflow-hidden">
@@ -404,7 +304,6 @@ export default function HospitalChatbot() {
               </div>
             </div>
 
-            {/* Messages Area */}
             <div className="h-112.5 overflow-y-auto px-6 py-4 bg-gradient-to-b from-gray-50 to-white">
               {messages.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center px-4">
@@ -500,7 +399,6 @@ export default function HospitalChatbot() {
               )}
             </div>
 
-            {/* Input Area */}
             <div className="px-6 py-4 bg-white border-t border-gray-100">
               {replyingTo && (
                 <div className="mb-3 px-3 py-2 bg-green-50 rounded-lg flex items-start justify-between gap-2 animate-in fade-in slide-in-from-bottom-2 border-l-2 border-green-500">
@@ -531,7 +429,7 @@ export default function HospitalChatbot() {
                 />
                 <Button
                   onClick={handleSendMessage}
-                  disabled={!inputValue.trim() || isTyping}
+                  disabled={!inputValue.trim()}
                   className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm hover:shadow-md flex items-center justify-center p-0 mb-0.5"
                 >
                   <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
