@@ -38,11 +38,9 @@ export default function Sana() {
 
   // Read from WordPress plugin via URL: ?unique_id=Pathadont-Clinic-2025
   const uniqueId = searchParams.get("unique_id") || "default"
-  const hospitalName = HOSPITAL_CONFIGS[uniqueId]?.name || "Your Hospital"
-
-  const config = HOSPITAL_CONFIGS[uniqueId] || HOSPITAL_CONFIGS.default
-  const logo = config.logo || "/sana.png"
-  const buttonImage = config.buttonImage || "/emr.jpg"
+  
+  const [hospitalConfig, setHospitalConfig] = useState<HospitalConfig | null>(null)
+  const [configLoading, setConfigLoading] = useState(true)
 
   const [isOpen, setIsOpen] = useState(false)
   const [showQueries, setShowQueries] = useState(false)
@@ -63,6 +61,29 @@ export default function Sana() {
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }
+
+  // Fetch hospital config based on unique_id
+  useEffect(() => {
+    const fetchHospitalConfig = async () => {
+      try {
+        setConfigLoading(true)
+        // Try to fetch from API first, fallback to local config
+        const config = HOSPITAL_CONFIGS[uniqueId] || HOSPITAL_CONFIGS.default
+        setHospitalConfig(config)
+      } catch (error) {
+        console.error("Error fetching hospital config:", error)
+        setHospitalConfig(HOSPITAL_CONFIGS.default)
+      } finally {
+        setConfigLoading(false)
+      }
+    }
+
+    fetchHospitalConfig()
+  }, [uniqueId])
+
+  const hospitalName = hospitalConfig?.name || "Your Hospital"
+  const logo = hospitalConfig?.logo || "/sana.png"
+  const buttonImage = hospitalConfig?.buttonImage || "/emr.jpg"
 
   useEffect(() => {
     scrollToBottom()
@@ -182,39 +203,49 @@ export default function Sana() {
         content: msg.content,
       }))
 
+      const payload = {
+        unique_id: uniqueId,
+        query: query,
+        history: history,
+      }
+
+      console.log("Sending to API:", payload)
+
       const response = await fetch("https://sana.emrchains.com/api3/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Accept": "text/plain; charset=utf-8",
         },
-        body: JSON.stringify({
-          unique_id: uniqueId,
-          query: query,
-          history: history,
-        }),
+        body: JSON.stringify(payload),
       })
+
+      console.log("API Response Status:", response.status)
 
       let aiContent = ""
       if (response.ok) {
         aiContent = await response.text()
+        console.log("API Response Content:", aiContent)
       } else {
-        aiContent = "Sorry, I encountered an error processing your request. Please try again."
+        const errorText = await response.text()
+        console.error("API Error Response:", errorText)
+        aiContent = `Error: The API returned status ${response.status}. Please check the console for details.`
       }
 
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: "ai",
-        content: aiContent,
+        content: aiContent || "No response from API",
         timestamp: new Date(),
       }
       setMessages((prev) => [...prev, aiMessage])
     } catch (error) {
       console.error("API Error:", error)
+      const errorMsg = error instanceof Error ? error.message : "Unknown error"
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: "ai",
-        content: "Unable to connect to the AI service. Please check your connection and try again.",
+        content: `Connection Error: ${errorMsg}. Please ensure the API endpoint is accessible.`,
         timestamp: new Date(),
       }
       setMessages((prev) => [...prev, aiMessage])
@@ -300,7 +331,7 @@ export default function Sana() {
       </div>
 
       {/* Chat Window – completely unchanged UI */}
-      {isOpen && (
+      {isOpen && !configLoading && (
         <div className="fixed bottom-6 right-6 z-50 w-100 h-160 max-w-[calc(100vw-3rem)] animate-in fade-in slide-in-from-bottom-8 duration-500">
           <div className="bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-100">
             <div className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 px-6 py-4 flex items-center justify-between">
