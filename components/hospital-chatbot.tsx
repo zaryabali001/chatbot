@@ -4,7 +4,7 @@
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { useSearchParams } from "next/navigation" // For reading query params
+import { useSearchParams } from "next/navigation"
 
 type QueryType = "appointment" | "report" | "assistant" | null
 
@@ -19,8 +19,14 @@ interface Message {
   }
 }
 
-// Optional: Keep this for advanced hospitals with custom logos
-const HOSPITAL_CONFIGS: Record<string, { name: string; logo?: string; buttonImage?: string }> = {
+interface HospitalConfig {
+  name: string
+  logo?: string
+  buttonImage?: string
+}
+
+// Optional config map for custom logos/buttons per hospital (fallback)
+const HOSPITAL_CONFIGS: Record<string, HospitalConfig> = {
   default: {
     name: "Sana AI Health Assistant",
     logo: "/sana.png",
@@ -31,18 +37,32 @@ const HOSPITAL_CONFIGS: Record<string, { name: string; logo?: string; buttonImag
 export default function HospitalChatbot() {
   const searchParams = useSearchParams()
 
-  // Read from URL: ?user_id=medi-care-123&user_name=MediCare%20Hospital
+  // Read from URL query params
   const urlUserId = searchParams.get("user_id") || ""
   const urlUserName = searchParams.get("user_name") ? decodeURIComponent(searchParams.get("user_name")!) : ""
+  const urlUniqueId = searchParams.get("unique_id") || "" // For backend routing (same behavior as HTML widget)
 
-  // Final values: prioritize URL params, fallback to config or default
+  // Final values used in UI
   const uniqueId = urlUserId || "default"
   const hospitalName = urlUserName || HOSPITAL_CONFIGS[uniqueId]?.name || "Your Hospital"
 
-  // You can extend this to support custom logos via URL too if needed later
+  // Backend unique_id – critical for routing to correct AI model/knowledge base
+  const backendUniqueId = urlUniqueId || urlUserId || "default-hospital-2025"
+
+  // Visual assets
   const config = HOSPITAL_CONFIGS[uniqueId] || HOSPITAL_CONFIGS.default
   const logo = config.logo || "/sana.png"
   const buttonImage = config.buttonImage || "/emr.jpg"
+
+  // Persistent end user ID (like in the HTML version)
+  const [endUserId] = useState<string>(() => {
+    let stored = localStorage.getItem("sana_end_user_id")
+    if (!stored) {
+      stored = crypto.randomUUID?.() || Date.now().toString(36) + Math.random().toString(36).substr(2)
+      localStorage.setItem("sana_end_user_id", stored)
+    }
+    return stored
+  })
 
   const [isOpen, setIsOpen] = useState(false)
   const [showQueries, setShowQueries] = useState(false)
@@ -52,6 +72,7 @@ export default function HospitalChatbot() {
   const [replyingTo, setReplyingTo] = useState<Message | null>(null)
   const [hoveredMessage, setHoveredMessage] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [isTyping, setIsTyping] = useState(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -67,7 +88,7 @@ export default function HospitalChatbot() {
     scrollToBottom()
   }, [messages])
 
-  // Auto-popup sequence
+  // Auto-show queries one by one when closed
   useEffect(() => {
     if (isOpen || showQueries) return
 
@@ -76,6 +97,7 @@ export default function HospitalChatbot() {
       if (index < 3) {
         setAutoPopupIndex(index)
         setShowQueries(true)
+
         autoPopupTimeoutRef.current = setTimeout(() => {
           setShowQueries(false)
           index++
@@ -85,6 +107,7 @@ export default function HospitalChatbot() {
         }, 2000)
       }
     }
+
     autoPopupTimeoutRef.current = setTimeout(showNext, 1000)
 
     return () => {
@@ -100,7 +123,9 @@ export default function HospitalChatbot() {
   }
 
   const handleMouseLeave = () => {
-    timeoutRef.current = setTimeout(() => setShowQueries(false), 300)
+    timeoutRef.current = setTimeout(() => {
+      setShowQueries(false)
+    }, 300)
   }
 
   const handleQueryClick = (type: QueryType) => {
@@ -110,13 +135,24 @@ export default function HospitalChatbot() {
 
     let userContent = ""
     switch (type) {
-      case "appointment": userContent = "Book an Appointment"; break
-      case "report": userContent = "Upload Medical Report"; break
-      case "assistant": userContent = "Talk to AI Health Assistant"; break
+      case "appointment":
+        userContent = "Book an Appointment"
+        break
+      case "report":
+        userContent = "Upload Medical Report"
+        break
+      case "assistant":
+        userContent = "Talk to AI Health Assistant"
+        break
     }
 
     if (userContent) {
-      const userMessage: Message = { id: Date.now().toString(), type: "user", content: userContent, timestamp: new Date() }
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        type: "user",
+        content: userContent,
+        timestamp: new Date(),
+      }
       setMessages([userMessage])
 
       setTimeout(() => {
@@ -132,35 +168,118 @@ export default function HospitalChatbot() {
           content: aiResponses[type!],
           timestamp: new Date(),
         }
-        setMessages(prev => [...prev, aiMessage])
+        setMessages((prev) => [...prev, aiMessage])
       }, 800)
     }
   }
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!inputValue.trim()) return
+
+    const userText = inputValue.trim()
 
     const userMessage: Message = {
       id: Date.now().toString(),
       type: "user",
-      content: inputValue,
+      content: userText,
       timestamp: new Date(),
-      ...(replyingTo && { replyTo: { id: replyingTo.id, content: replyingTo.content } }),
+      ...(replyingTo && {
+        replyTo: {
+          id: replyingTo.id,
+          content: replyingTo.content,
+        },
+      }),
     }
 
-    setMessages(prev => [...prev, userMessage])
+    setMessages((prev) => [...prev, userMessage])
     setInputValue("")
     setReplyingTo(null)
+    setIsTyping(true)
 
-    setTimeout(() => {
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        type: "ai",
-        content: `Thank you for reaching out to ${hospitalName}. Our medical team will review your message shortly. Would you like to schedule a consultation?`,
-        timestamp: new Date(),
+    // Add typing indicator
+    const typingId = "typing-" + Date.now()
+    const typingMessage: Message = {
+      id: typingId,
+      type: "ai",
+      content: "...",
+      timestamp: new Date(),
+    }
+    setMessages((prev) => [...prev, typingMessage])
+
+    try {
+      const response = await fetch("https://sana.emrchains.com/api3/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          query: userText,
+          unique_id: backendUniqueId, // ← Same functional behavior as HTML widget
+          end_user_id: endUserId,
+          history: messages
+            .filter((m) => m.id !== typingId)
+            .map((m) => `${m.type === "user" ? "User" : "Assistant"}: ${m.content}`),
+        }),
+      })
+
+      let botResponse = ""
+
+      if (response.body) {
+        const reader = response.body.getReader()
+        const decoder = new TextDecoder()
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          const chunk = decoder.decode(value, { stream: true })
+          botResponse += chunk
+
+          setMessages((prev) => {
+            const filtered = prev.filter((m) => m.id !== typingId)
+            return [
+              ...filtered,
+              {
+                id: Date.now().toString(),
+                type: "ai",
+                content: botResponse,
+                timestamp: new Date(),
+              },
+            ]
+          })
+          scrollToBottom()
+        }
+      } else {
+        botResponse = await response.text()
+        setMessages((prev) => {
+          const filtered = prev.filter((m) => m.id !== typingId)
+          return [
+            ...filtered,
+            {
+              id: Date.now().toString(),
+              type: "ai",
+              content: botResponse,
+              timestamp: new Date(),
+            },
+          ]
+        })
       }
-      setMessages(prev => [...prev, aiMessage])
-    }, 1000)
+    } catch (error) {
+      console.error("Chat API error:", error)
+      setMessages((prev) => {
+        const filtered = prev.filter((m) => m.id !== typingId)
+        return [
+          ...filtered,
+          {
+            id: Date.now().toString(),
+            type: "ai",
+            content: "Sorry, something went wrong. Please try again later.",
+            timestamp: new Date(),
+          },
+        ]
+      })
+    } finally {
+      setIsTyping(false)
+    }
   }
 
   const handleCopyMessage = (content: string, id: string) => {
@@ -189,7 +308,7 @@ export default function HospitalChatbot() {
 
   return (
     <>
-      {/* Floating Button */}
+      {/* Floating Chatbot Icon with Left Label */}
       <div className="max-w-[calc(100vw-3rem)] fixed bottom-6 right-6 pointer-events-none z-50">
         <div
           ref={containerRef}
@@ -197,6 +316,7 @@ export default function HospitalChatbot() {
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
         >
+          {/* Persistent Label on the Left */}
           {!isOpen && (
             <div className="absolute right-full mr-4 whitespace-nowrap pointer-events-none">
               <span className="bg-gradient-to-r from-green-600 to-emerald-600 text-white text-sm font-medium px-4 py-2 rounded-full shadow-lg">
@@ -205,6 +325,7 @@ export default function HospitalChatbot() {
             </div>
           )}
 
+          {/* Smart Popup Queries */}
           {showQueries && !isOpen && (
             <div className="absolute bottom-20 right-0 flex flex-col gap-3 mb-2 animate-in fade-in slide-in-from-bottom-4 duration-300">
               {queryOptions.map((query, index) => (
@@ -227,6 +348,7 @@ export default function HospitalChatbot() {
             </div>
           )}
 
+          {/* Main Chatbot Icon */}
           {!isOpen && (
             <button
               onClick={() => setIsOpen(true)}
@@ -247,7 +369,7 @@ export default function HospitalChatbot() {
             <div className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 px-6 py-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 backdrop-blur-sm rounded-full flex items-center justify-center overflow-hidden">
-                  <img src={logo} alt="Logo" className="w-full h-full object-contain" />
+                  <img src={logo} alt={`${hospitalName} logo`} className="w-full h-full object-contain" />
                 </div>
                 <div>
                   <h3 className="text-white font-semibold text-base">{hospitalName}</h3>
@@ -257,13 +379,24 @@ export default function HospitalChatbot() {
                   </div>
                 </div>
               </div>
+
               <div className="flex items-center gap-2">
-                <button onClick={() => setIsOpen(false)} className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 backdrop-blur-sm flex items-center justify-center transition-colors">
+                <button
+                  onClick={() => setIsOpen(false)}
+                  className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 backdrop-blur-sm flex items-center justify-center transition-colors"
+                >
                   <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
-                <button onClick={() => { setIsOpen(false); setMessages([]); setReplyingTo(null); }} className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 backdrop-blur-sm flex items-center justify-center transition-colors">
+                <button
+                  onClick={() => {
+                    setIsOpen(false)
+                    setMessages([])
+                    setReplyingTo(null)
+                  }}
+                  className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 backdrop-blur-sm flex items-center justify-center transition-colors"
+                >
                   <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
@@ -271,7 +404,7 @@ export default function HospitalChatbot() {
               </div>
             </div>
 
-            {/* Messages & Input - same as before */}
+            {/* Messages Area */}
             <div className="h-112.5 overflow-y-auto px-6 py-4 bg-gradient-to-b from-gray-50 to-white">
               {messages.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center px-4">
@@ -282,6 +415,7 @@ export default function HospitalChatbot() {
                   <p className="text-sm text-gray-600 leading-relaxed">
                     Your AI health assistant is ready to help. Choose a quick action or type your message below.
                   </p>
+
                   <div className="mt-6 flex flex-col gap-2 w-full">
                     {queryOptions.map((query) => (
                       <button
@@ -296,46 +430,60 @@ export default function HospitalChatbot() {
                   </div>
                 </div>
               ) : (
-                // ... (messages rendering - unchanged from your original)
                 <div className="space-y-4">
                   {messages.map((message) => (
                     <div key={message.id}>
                       {message.replyTo && message.type === "user" && (
                         <div className="flex justify-end mb-1">
                           <div className="max-w-[80%] px-3 py-1.5 bg-gray-100 rounded-lg text-xs text-gray-600 italic border-l-2 border-green-500">
-                            Replying to: {message.replyTo.content.substring(0, 50)}{message.replyTo.content.length > 50 ? "..." : ""}
+                            Replying to: {message.replyTo.content.substring(0, 50)}
+                            {message.replyTo.content.length > 50 ? "..." : ""}
                           </div>
                         </div>
                       )}
-                      <div className={cn("flex", message.type === "user" ? "justify-end" : "justify-start")}
+                      <div
+                        className={cn("flex", message.type === "user" ? "justify-end" : "justify-start")}
                         onMouseEnter={() => setHoveredMessage(message.id)}
-                        onMouseLeave={() => setHoveredMessage(null)}>
+                        onMouseLeave={() => setHoveredMessage(null)}
+                      >
                         <div className={cn("max-w-[80%] relative group")}>
-                          <div className={cn(
-                            "px-4 py-3 rounded-2xl shadow-sm transition-all duration-300",
-                            message.type === "user"
-                              ? "bg-gradient-to-br from-green-500 via-emerald-500 to-green-600 text-white rounded-br-sm"
-                              : "bg-gradient-to-br from-green-50 to-emerald-50 text-gray-800 border border-green-100 rounded-bl-sm"
-                          )}>
+                          <div
+                            className={cn(
+                              "px-4 py-3 rounded-2xl shadow-sm transition-all duration-300",
+                              message.type === "user"
+                                ? "bg-gradient-to-br from-green-500 via-emerald-500 to-green-600 text-white rounded-br-sm"
+                                : "bg-gradient-to-br from-green-50 to-emerald-50 text-gray-800 border border-green-100 rounded-bl-sm"
+                            )}
+                          >
                             <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
                           </div>
-                          {/* Copy & Reply buttons - unchanged */}
+
                           {message.type === "ai" && hoveredMessage === message.id && (
                             <div className="absolute -bottom-8 left-0 flex items-center gap-2 bg-white rounded-lg shadow-lg border border-gray-200 px-2 py-1 animate-in fade-in slide-in-from-top-2 duration-200">
-                              <button onClick={() => handleCopyMessage(message.content, message.id)} className="flex items-center gap-1.5 px-2 py-1 hover:bg-gray-100 rounded transition-all duration-200" title="Copy">
+                              <button
+                                onClick={() => handleCopyMessage(message.content, message.id)}
+                                className="flex items-center gap-1.5 px-2 py-1 hover:bg-gray-100 rounded transition-all duration-200"
+                                title="Copy message"
+                              >
                                 {copiedId === message.id ? (
-                                  <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" /></svg>
+                                  <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" />
+                                  </svg>
                                 ) : (
                                   <svg className="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                                   </svg>
                                 )}
-                                <span className={cn("text-xs", copiedId === message.id ? "text-green-600" : "text-gray-600")}>
+                                <span className={cn("text-xs transition-colors", copiedId === message.id ? "text-green-600" : "text-gray-600")}>
                                   {copiedId === message.id ? "Copied!" : "Copy"}
                                 </span>
                               </button>
                               <div className="w-px h-4 bg-gray-300" />
-                              <button onClick={() => handleReplyToMessage(message)} className="flex items-center gap-1.5 px-2 py-1 hover:bg-gray-100 rounded transition-colors" title="Reply">
+                              <button
+                                onClick={() => handleReplyToMessage(message)}
+                                className="flex items-center gap-1.5 px-2 py-1 hover:bg-gray-100 rounded transition-colors"
+                                title="Reply to message"
+                              >
                                 <svg className="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
                                 </svg>
@@ -360,7 +508,10 @@ export default function HospitalChatbot() {
                     <p className="text-xs font-medium text-green-700 mb-1">Replying to:</p>
                     <p className="text-xs text-gray-600 truncate">{replyingTo.content}</p>
                   </div>
-                  <button onClick={() => setReplyingTo(null)} className="p-1 hover:bg-green-100 rounded transition-colors shrink-0">
+                  <button
+                    onClick={() => setReplyingTo(null)}
+                    className="p-1 hover:bg-green-100 rounded transition-colors shrink-0"
+                  >
                     <svg className="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
@@ -380,7 +531,7 @@ export default function HospitalChatbot() {
                 />
                 <Button
                   onClick={handleSendMessage}
-                  disabled={!inputValue.trim()}
+                  disabled={!inputValue.trim() || isTyping}
                   className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm hover:shadow-md flex items-center justify-center p-0 mb-0.5"
                 >
                   <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
