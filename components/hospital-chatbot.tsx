@@ -222,7 +222,7 @@ export default function HospitalChatbot() {
         >
           {!isOpen && (
             <div className="absolute right-full mr-4 whitespace-nowrap pointer-events-none">
-              <span className="bg-gradient-to-r from-green-600 to-emerald-600 text-white text-sm font-medium px-4 py-2 rounded-full shadow-lg">
+              <span className="bg-linear-to-r from-green-600 to-emerald-600 text-white text-sm font-medium px-4 py-2 rounded-full shadow-lg">
                 Chat with Sana AI
               </span>
             </div>
