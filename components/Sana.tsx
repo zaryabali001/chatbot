@@ -203,49 +203,39 @@ export default function Sana() {
         content: msg.content,
       }))
 
-      const payload = {
-        unique_id: uniqueId,
-        query: query,
-        history: history,
-      }
-
-      console.log("Sending to API:", payload)
-
       const response = await fetch("https://sana.emrchains.com/api3/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Accept": "text/plain; charset=utf-8",
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          unique_id: uniqueId,
+          query: query,
+          history: history,
+        }),
       })
-
-      console.log("API Response Status:", response.status)
 
       let aiContent = ""
       if (response.ok) {
         aiContent = await response.text()
-        console.log("API Response Content:", aiContent)
       } else {
-        const errorText = await response.text()
-        console.error("API Error Response:", errorText)
-        aiContent = `Error: The API returned status ${response.status}. Please check the console for details.`
+        aiContent = "Sorry, I encountered an error processing your request. Please try again."
       }
 
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: "ai",
-        content: aiContent || "No response from API",
+        content: aiContent,
         timestamp: new Date(),
       }
       setMessages((prev) => [...prev, aiMessage])
     } catch (error) {
       console.error("API Error:", error)
-      const errorMsg = error instanceof Error ? error.message : "Unknown error"
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: "ai",
-        content: `Connection Error: ${errorMsg}. Please ensure the API endpoint is accessible.`,
+        content: "Unable to connect to the AI service. Please check your connection and try again.",
         timestamp: new Date(),
       }
       setMessages((prev) => [...prev, aiMessage])
@@ -331,7 +321,7 @@ export default function Sana() {
       </div>
 
       {/* Chat Window – completely unchanged UI */}
-      {isOpen && !configLoading && (
+      {isOpen && (
         <div className="fixed bottom-6 right-6 z-50 w-100 h-160 max-w-[calc(100vw-3rem)] animate-in fade-in slide-in-from-bottom-8 duration-500">
           <div className="bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-100">
             <div className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 px-6 py-4 flex items-center justify-between">
