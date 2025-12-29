@@ -36,11 +36,11 @@ const HOSPITAL_CONFIGS: Record<string, HospitalConfig> = {
 export default function Sana() {
   const searchParams = useSearchParams()
 
-  // Read from WordPress plugin via URL: ?unique_id=Pathadont-Clinic-2025
-  const uniqueId = searchParams.get("unique_id") || "default"
-  
-  const [hospitalConfig, setHospitalConfig] = useState<HospitalConfig | null>(null)
-  const [configLoading, setConfigLoading] = useState(true)
+  // State for dynamic config
+  const [uniqueId, setUniqueId] = useState("")
+  const [hospitalName, setHospitalName] = useState("Your Hospital")
+  const [logo, setLogo] = useState("/sana.png")
+  const [buttonImage, setButtonImage] = useState("/emr.jpg")
 
   const [isOpen, setIsOpen] = useState(false)
   const [showQueries, setShowQueries] = useState(false)
@@ -50,7 +50,6 @@ export default function Sana() {
   const [replyingTo, setReplyingTo] = useState<Message | null>(null)
   const [hoveredMessage, setHoveredMessage] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -58,32 +57,27 @@ export default function Sana() {
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
   const autoPopupTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
+  // Effect to update config when URL params change
+  useEffect(() => {
+    const urlUserId = searchParams.get("user_id") || ""
+    const urlUserName = searchParams.get("user_name") ? decodeURIComponent(searchParams.get("user_name")!) : ""
+
+    const newUniqueId = urlUserId || "default"
+    const newHospitalName = urlUserName || HOSPITAL_CONFIGS[newUniqueId]?.name || "Your Hospital"
+    const config = HOSPITAL_CONFIGS[newUniqueId] || HOSPITAL_CONFIGS.default
+    const newLogo = config.logo || "/sana.png"
+    const newButtonImage = config.buttonImage || "/emr.jpg"
+
+    // Only update if values changed
+    setUniqueId(newUniqueId)
+    setHospitalName(newHospitalName)
+    setLogo(newLogo)
+    setButtonImage(newButtonImage)
+  }, [searchParams])
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }
-
-  // Fetch hospital config based on unique_id
-  useEffect(() => {
-    const fetchHospitalConfig = async () => {
-      try {
-        setConfigLoading(true)
-        // Try to fetch from API first, fallback to local config
-        const config = HOSPITAL_CONFIGS[uniqueId] || HOSPITAL_CONFIGS.default
-        setHospitalConfig(config)
-      } catch (error) {
-        console.error("Error fetching hospital config:", error)
-        setHospitalConfig(HOSPITAL_CONFIGS.default)
-      } finally {
-        setConfigLoading(false)
-      }
-    }
-
-    fetchHospitalConfig()
-  }, [uniqueId])
-
-  const hospitalName = hospitalConfig?.name || "Your Hospital"
-  const logo = hospitalConfig?.logo || "/sana.png"
-  const buttonImage = hospitalConfig?.buttonImage || "/emr.jpg"
 
   useEffect(() => {
     scrollToBottom()
@@ -173,15 +167,13 @@ export default function Sana() {
     }
   }
 
-  const handleSendMessage = async () => {
-    if (!inputValue.trim() || isLoading) return
-
-    const query = inputValue.trim()
+  const handleSendMessage = () => {
+    if (!inputValue.trim()) return
 
     const userMessage: Message = {
       id: Date.now().toString(),
       type: "user",
-      content: query,
+      content: inputValue,
       timestamp: new Date(),
       ...(replyingTo && {
         replyTo: {
@@ -194,54 +186,17 @@ export default function Sana() {
     setMessages((prev) => [...prev, userMessage])
     setInputValue("")
     setReplyingTo(null)
-    setIsLoading(true)
 
-    try {
-      // Build conversation history for API
-      const history = messages.map((msg) => ({
-        type: msg.type,
-        content: msg.content,
-      }))
-
-      const response = await fetch("https://sana.emrchains.com/api3/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "text/plain; charset=utf-8",
-        },
-        body: JSON.stringify({
-          unique_id: uniqueId,
-          query: query,
-          history: history,
-        }),
-      })
-
-      let aiContent = ""
-      if (response.ok) {
-        aiContent = await response.text()
-      } else {
-        aiContent = "Sorry, I encountered an error processing your request. Please try again."
-      }
-
+    // Simulated AI response (local, no external API)
+    setTimeout(() => {
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: "ai",
-        content: aiContent,
+        content: `Thank you for reaching out to ${hospitalName}. I understand your concern. Our medical team will review this shortly. In the meantime, would you like to schedule a consultation?`,
         timestamp: new Date(),
       }
       setMessages((prev) => [...prev, aiMessage])
-    } catch (error) {
-      console.error("API Error:", error)
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        type: "ai",
-        content: "Unable to connect to the AI service. Please check your connection and try again.",
-        timestamp: new Date(),
-      }
-      setMessages((prev) => [...prev, aiMessage])
-    } finally {
-      setIsLoading(false)
-    }
+    }, 1000)
   }
 
   const handleCopyMessage = (content: string, id: string) => {
@@ -487,7 +442,7 @@ export default function Sana() {
                 />
                 <Button
                   onClick={handleSendMessage}
-                  disabled={!inputValue.trim() || isLoading}
+                  disabled={!inputValue.trim()}
                   className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm hover:shadow-md flex items-center justify-center p-0 mb-0.5"
                 >
                   <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
