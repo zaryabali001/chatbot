@@ -4,7 +4,7 @@ import HospitalChatbot from "@/components/hospital-chatbot";
 
 export default function Page() {
   return (
-    <div className="bg-transparent h-screen w-screen overflow-hidden">
+    <div className="bg-transparent h-120vh w-screen overflow-hidden">
       {/* Demo content */}
       {/* <div className="container mx-auto px-4 py-16">
         <div className="max-w-4xl mx-auto text-center space-y-8">
