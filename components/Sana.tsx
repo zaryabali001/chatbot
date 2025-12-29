@@ -75,6 +75,24 @@ export default function Sana() {
     setButtonImage(newButtonImage)
   }, [searchParams])
 
+  // Effect to listen for postMessage updates from WordPress plugin
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      // Verify message origin (add your domain for production)
+      if (event.data.type === "SANA_CONFIG_UPDATE") {
+        const { unique_id, hospital_name, logo, buttonImage } = event.data
+
+        if (unique_id) setUniqueId(unique_id)
+        if (hospital_name) setHospitalName(hospital_name)
+        if (logo) setLogo(logo)
+        if (buttonImage) setButtonImage(buttonImage)
+      }
+    }
+
+    window.addEventListener("message", handleMessage)
+    return () => window.removeEventListener("message", handleMessage)
+  }, [])
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }
