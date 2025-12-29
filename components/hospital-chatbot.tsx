@@ -465,7 +465,7 @@ export default function HospitalChatbot({ uniqueId }: HospitalChatbotProps) {
               EMRCHains
             </span>
           </div>
-            </div>
+            </div>  
           </div>
         </div>
       )}
