@@ -36,12 +36,9 @@ const HOSPITAL_CONFIGS: Record<string, HospitalConfig> = {
 export default function Sana() {
   const searchParams = useSearchParams()
 
-  // Read from plugin via URL: ?user_id=medi-care-123&user_name=MediCare%20Hospital
-  const urlUserId = searchParams.get("user_id") || ""
-  const urlUserName = searchParams.get("user_name") ? decodeURIComponent(searchParams.get("user_name")!) : ""
-
-  const uniqueId = urlUserId || "default"
-  const hospitalName = urlUserName || HOSPITAL_CONFIGS[uniqueId]?.name || "Your Hospital"
+  // Read from WordPress plugin via URL: ?unique_id=Pathadont-Clinic-2025
+  const uniqueId = searchParams.get("unique_id") || "default"
+  const hospitalName = HOSPITAL_CONFIGS[uniqueId]?.name || "Your Hospital"
 
   const config = HOSPITAL_CONFIGS[uniqueId] || HOSPITAL_CONFIGS.default
   const logo = config.logo || "/sana.png"
@@ -55,6 +52,7 @@ export default function Sana() {
   const [replyingTo, setReplyingTo] = useState<Message | null>(null)
   const [hoveredMessage, setHoveredMessage] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -154,8 +152,8 @@ export default function Sana() {
     }
   }
 
-  const handleSendMessage = () => {
-    if (!inputValue.trim()) return
+  const handleSendMessage = async () => {
+    if (!inputValue.trim() || isLoading) return
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -173,17 +171,54 @@ export default function Sana() {
     setMessages((prev) => [...prev, userMessage])
     setInputValue("")
     setReplyingTo(null)
+    setIsLoading(true)
 
-    // Simulated AI response (local, no external API)
-    setTimeout(() => {
+    try {
+      // Build conversation history for API
+      const history = messages.map((msg) => ({
+        type: msg.type,
+        content: msg.content,
+      }))
+
+      const response = await fetch("https://sana.emrchains.com/api3/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "text/plain; charset=utf-8",
+        },
+        body: JSON.stringify({
+          unique_id: uniqueId,
+          query: inputValue,
+          history: history,
+        }),
+      })
+
+      let aiContent = ""
+      if (response.ok) {
+        aiContent = await response.text()
+      } else {
+        aiContent = "Sorry, I encountered an error processing your request. Please try again."
+      }
+
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: "ai",
-        content: `Thank you for reaching out to ${hospitalName}. I understand your concern. Our medical team will review this shortly. In the meantime, would you like to schedule a consultation?`,
+        content: aiContent,
         timestamp: new Date(),
       }
       setMessages((prev) => [...prev, aiMessage])
-    }, 1000)
+    } catch (error) {
+      console.error("API Error:", error)
+      const aiMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        type: "ai",
+        content: "Unable to connect to the AI service. Please check your connection and try again.",
+        timestamp: new Date(),
+      }
+      setMessages((prev) => [...prev, aiMessage])
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleCopyMessage = (content: string, id: string) => {
@@ -429,7 +464,7 @@ export default function Sana() {
                 />
                 <Button
                   onClick={handleSendMessage}
-                  disabled={!inputValue.trim()}
+                  disabled={!inputValue.trim() || isLoading}
                   className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm hover:shadow-md flex items-center justify-center p-0 mb-0.5"
                 >
                   <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
