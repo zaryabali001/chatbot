@@ -36,12 +36,8 @@ const HOSPITAL_CONFIGS: Record<string, HospitalConfig> = {
 export default function Sana() {
   const searchParams = useSearchParams()
 
-  // Read from WordPress plugin settings via URL parameters
-  // Example: ?unique_id=Pathadont-Clinic-2025&name=Pathadont%20Clinic&logo=/logo.png&buttonImage=/btn.jpg
+  // Read from WordPress plugin via URL: ?unique_id=Pathadont-Clinic-2025
   const uniqueId = searchParams.get("unique_id") || "default"
-  const pluginName = searchParams.get("name")
-  const pluginLogo = searchParams.get("logo")
-  const pluginButtonImage = searchParams.get("buttonImage")
   
   const [hospitalConfig, setHospitalConfig] = useState<HospitalConfig | null>(null)
   const [configLoading, setConfigLoading] = useState(true)
@@ -66,27 +62,24 @@ export default function Sana() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }
 
-  // Load hospital config from WordPress plugin settings
+  // Fetch hospital config based on unique_id
   useEffect(() => {
-    try {
-      setConfigLoading(true)
-      
-      // Build config from plugin settings or fallback to defaults
-      const config: HospitalConfig = {
-        name: pluginName || HOSPITAL_CONFIGS[uniqueId]?.name || "Your Hospital",
-        logo: pluginLogo || HOSPITAL_CONFIGS[uniqueId]?.logo || "/sana.png",
-        buttonImage: pluginButtonImage || HOSPITAL_CONFIGS[uniqueId]?.buttonImage || "/emr.jpg",
+    const fetchHospitalConfig = async () => {
+      try {
+        setConfigLoading(true)
+        // Try to fetch from API first, fallback to local config
+        const config = HOSPITAL_CONFIGS[uniqueId] || HOSPITAL_CONFIGS.default
+        setHospitalConfig(config)
+      } catch (error) {
+        console.error("Error fetching hospital config:", error)
+        setHospitalConfig(HOSPITAL_CONFIGS.default)
+      } finally {
+        setConfigLoading(false)
       }
-      
-      console.log("Hospital Config Loaded:", { uniqueId, ...config })
-      setHospitalConfig(config)
-    } catch (error) {
-      console.error("Error loading hospital config:", error)
-      setHospitalConfig(HOSPITAL_CONFIGS.default)
-    } finally {
-      setConfigLoading(false)
     }
-  }, [uniqueId, pluginName, pluginLogo, pluginButtonImage])
+
+    fetchHospitalConfig()
+  }, [uniqueId])
 
   const hospitalName = hospitalConfig?.name || "Your Hospital"
   const logo = hospitalConfig?.logo || "/sana.png"
@@ -210,49 +203,39 @@ export default function Sana() {
         content: msg.content,
       }))
 
-      const payload = {
-        unique_id: uniqueId,
-        query: query,
-        history: history,
-      }
-
-      console.log("Sending to API:", payload)
-
       const response = await fetch("https://sana.emrchains.com/api3/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Accept": "text/plain; charset=utf-8",
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          unique_id: uniqueId,
+          query: query,
+          history: history,
+        }),
       })
-
-      console.log("API Response Status:", response.status)
 
       let aiContent = ""
       if (response.ok) {
         aiContent = await response.text()
-        console.log("API Response Content:", aiContent)
       } else {
-        const errorText = await response.text()
-        console.error("API Error Response:", errorText)
-        aiContent = `Error: The API returned status ${response.status}. Please check the console for details.`
+        aiContent = "Sorry, I encountered an error processing your request. Please try again."
       }
 
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: "ai",
-        content: aiContent || "No response from API",
+        content: aiContent,
         timestamp: new Date(),
       }
       setMessages((prev) => [...prev, aiMessage])
     } catch (error) {
       console.error("API Error:", error)
-      const errorMsg = error instanceof Error ? error.message : "Unknown error"
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: "ai",
-        content: `Connection Error: ${errorMsg}. Please ensure the API endpoint is accessible.`,
+        content: "Unable to connect to the AI service. Please check your connection and try again.",
         timestamp: new Date(),
       }
       setMessages((prev) => [...prev, aiMessage])
@@ -385,7 +368,7 @@ export default function Sana() {
                   <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mb-4">
                     <img src={logo} alt="Logo" className="w-16 h-16 object-contain" />
                   </div>
-                  <h4 className="text-lg font-semibold text-gray-900 mb-2">Welcome to {hospitalConfig?.name || "Your Hospital"}</h4>
+                  <h4 className="text-lg font-semibold text-gray-900 mb-2">Welcome to {hospitalName}</h4>
                   <p className="text-sm text-gray-600 leading-relaxed">
                     Your AI health assistant is ready to help. Choose a quick action or type your message below.
                   </p>
