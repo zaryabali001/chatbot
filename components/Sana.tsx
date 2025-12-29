@@ -155,10 +155,12 @@ export default function Sana() {
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isLoading) return
 
+    const query = inputValue.trim()
+
     const userMessage: Message = {
       id: Date.now().toString(),
       type: "user",
-      content: inputValue,
+      content: query,
       timestamp: new Date(),
       ...(replyingTo && {
         replyTo: {
@@ -188,7 +190,7 @@ export default function Sana() {
         },
         body: JSON.stringify({
           unique_id: uniqueId,
-          query: inputValue,
+          query: query,
           history: history,
         }),
       })
