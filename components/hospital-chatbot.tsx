@@ -18,14 +18,50 @@ interface Message {
   }
 }
 
+interface HospitalConfig {
+  name: string
+  logo?: string // optional custom logo path
+  buttonImage?: string // optional custom button image
+}
+
 interface HospitalChatbotProps {
   uniqueId?: string
 }
 
-export default function HospitalChatbot({ uniqueId }: HospitalChatbotProps) {
+// === HOSPITAL CONFIGURATION MAP ===
+// Add or update entries here for each hospital using their uniqueId
+const HOSPITAL_CONFIGS: Record<string, HospitalConfig> = {
+  "medi-care-123": {
+    name: "MediCare Hospital",
+    logo: "/sana.png",
+    buttonImage: "/emr.jpg",
+  },
+  "apollo-hospital-456": {
+    name: "Apollo Super Specialty Hospital",
+    logo: "/apollo-logo.png", // you can add custom logos
+    buttonImage: "/apollo-btn.jpg",
+  },
+  "fortis-health-789": {
+    name: "Fortis Healthcare",
+    logo: "/fortis.png",
+    buttonImage: "/fortis-btn.jpg",
+  },
+  // Add more hospitals here...
+  // Fallback for unknown IDs
+  default: {
+    name: "Sana AI Health Assistant",
+    logo: "/sana.png",
+    buttonImage: "/emr.jpg",
+  },
+}
+
+export default function HospitalChatbot({ uniqueId = "default" }: HospitalChatbotProps) {
+  // Get hospital config based on uniqueId
+  const config = HOSPITAL_CONFIGS[uniqueId] || HOSPITAL_CONFIGS.default
+
   const [isOpen, setIsOpen] = useState(false)
   const [showQueries, setShowQueries] = useState(false)
-  const [autoPopupIndex, setAutoPopupIndex] = useState(0) // Tracks which popup to highlight in sequence
+  const [autoPopupIndex, setAutoPopupIndex] = useState(0)
   const [messages, setMessages] = useState<Message[]>([])
   const [inputValue, setInputValue] = useState("")
   const [replyingTo, setReplyingTo] = useState<Message | null>(null)
@@ -46,12 +82,11 @@ export default function HospitalChatbot({ uniqueId }: HospitalChatbotProps) {
     scrollToBottom()
   }, [messages])
 
-  // Auto-show all three queries one by one (highlighting effect) every few seconds when chat is closed
+  // Auto-popup sequence effect
   useEffect(() => {
     if (isOpen || showQueries) return
 
     let index = 0
-
     const showNext = () => {
       if (index < 3) {
         setAutoPopupIndex(index)
@@ -62,8 +97,8 @@ export default function HospitalChatbot({ uniqueId }: HospitalChatbotProps) {
           index++
           setTimeout(() => {
             if (index < 3) showNext()
-          }, 500) // Delay before next highlight
-        }, 2000) // Each highlight visible for ~2s
+          }, 500)
+        }, 2000)
       }
     }
 
@@ -74,20 +109,13 @@ export default function HospitalChatbot({ uniqueId }: HospitalChatbotProps) {
     }
   }, [isOpen])
 
-  // Handle mouse enter on main button or popup area
   const handleMouseEnter = () => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current)
-      timeoutRef.current = null
-    }
-    if (autoPopupTimeoutRef.current) {
-      clearTimeout(autoPopupTimeoutRef.current)
-    }
+    if (timeoutRef.current) clearTimeout(timeoutRef.current)
+    if (autoPopupTimeoutRef.current) clearTimeout(autoPopupTimeoutRef.current)
     setShowQueries(true)
-    setAutoPopupIndex(-1) // Remove any auto-highlight when manually hovering
+    setAutoPopupIndex(-1)
   }
 
-  // Handle mouse leave from the entire container
   const handleMouseLeave = () => {
     timeoutRef.current = setTimeout(() => {
       setShowQueries(false)
@@ -123,9 +151,9 @@ export default function HospitalChatbot({ uniqueId }: HospitalChatbotProps) {
 
       setTimeout(() => {
         const aiResponses: Record<string, string> = {
-          appointment: "Great! I can help you book an appointment. Which department would you like to visit? (e.g., Cardiology, Pediatrics, etc.)",
+          appointment: `Great! I can help you book an appointment at ${config.name}. Which department would you like to visit? (e.g., Cardiology, Pediatrics, etc.)`,
           report: "You can upload your medical report here for analysis. Please share the report or describe your concern.",
-          assistant: "Hello! I'm your AI Health Assistant. How can I help you today? Feel free to describe symptoms, ask about conditions, or get general health advice.",
+          assistant: `Hello! I'm your AI Health Assistant at ${config.name}. How can I help you today? Feel free to describe symptoms, ask about conditions, or get general health advice.`,
         }
 
         const aiMessage: Message = {
@@ -163,8 +191,7 @@ export default function HospitalChatbot({ uniqueId }: HospitalChatbotProps) {
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: "ai",
-        content:
-          "I understand your concern. Our medical team will review this shortly. In the meantime, would you like to schedule a consultation?",
+        content: `Thank you for reaching out to ${config.name}. Our medical team will review your message shortly. Would you like to schedule a consultation?`,
         timestamp: new Date(),
       }
       setMessages((prev) => [...prev, aiMessage])
@@ -197,24 +224,24 @@ export default function HospitalChatbot({ uniqueId }: HospitalChatbotProps) {
 
   return (
     <>
-      {/* Floating Chatbot Icon with Left Label */}
-      <div className="max-w-[calc(100vw-3rem)] fixed bottom-6 right-6 pointer-events-none z-9999 bg-none border-none">
+      {/* Floating Chatbot Button */}
+      <div className="max-w-[calc(100vw-3rem)] fixed bottom-6 right-6 pointer-events-none z-50">
         <div
           ref={containerRef}
-          className="relative flex items-center gap-4 pointer-events-auto "
+          className="relative flex items-center gap-4 pointer-events-auto"
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
         >
-          {/* Persistent Label on the Left */}
+          {/* Persistent Label */}
           {!isOpen && (
             <div className="absolute right-full mr-4 whitespace-nowrap pointer-events-none">
-              <span className="bg-linear-to-r from-green-600 to-emerald-600 text-white text-sm font-medium px-4 py-2 rounded-full shadow-lg">
-                Chat with SANA AI
+              <span className="bg-gradient-to-r from-green-600 to-emerald-600 text-white text-sm font-medium px-4 py-2 rounded-full shadow-lg">
+                Chat with Sana AI
               </span>
             </div>
           )}
 
-          {/* Smart Popup Queries - All three on hover or auto sequence */}
+          {/* Query Popups */}
           {showQueries && !isOpen && (
             <div className="absolute bottom-20 right-0 flex flex-col gap-3 mb-2 animate-in fade-in slide-in-from-bottom-4 duration-300">
               {queryOptions.map((query, index) => (
@@ -222,8 +249,8 @@ export default function HospitalChatbot({ uniqueId }: HospitalChatbotProps) {
                   key={query.type}
                   onClick={() => handleQueryClick(query.type)}
                   className={cn(
-                    " px-5 py-2.5 backdrop-blur-xl border border-white/30 hover:border-green-500 rounded-full transition-all duration-300 hover:scale-105",
-                    autoPopupIndex === index && "ring-4 ring-green-400 ring-offset-2" // Optional highlight during auto sequence  
+                    "px-5 py-2.5 backdrop-blur-xl border border-white/30 hover:border-green-500 rounded-full transition-all duration-300 hover:scale-105",
+                    autoPopupIndex === index && "ring-4 ring-green-400 ring-offset-2"
                   )}
                 >
                   <div className="flex items-center gap-3 whitespace-nowrap">
@@ -237,41 +264,31 @@ export default function HospitalChatbot({ uniqueId }: HospitalChatbotProps) {
             </div>
           )}
 
-          {/* Main Chatbot Icon */}
+          {/* Main Button */}
           {!isOpen && (
             <button
               onClick={() => setIsOpen(true)}
-              className="w-16 h-16 rounded-full bg-linear-to-br from-green-500 to-emerald-600 shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center justify-center group relative animate-in fade-in zoom-in"
+              className="w-16 h-16 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center justify-center group relative animate-in fade-in zoom-in"
             >
               <div className="absolute inset-0 rounded-full bg-green-400 animate-ping opacity-20" />
-              <div className="absolute inset-0 rounded-full bg-linear-to-bropacity-75 group-hover:opacity-100 transition-opacity" />
-
-              {/* <svg className="w-8 h-8 text-white relative z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-              </svg> */}
-<img src="/emr.jpg" alt="" className="rounded-full" />
-             
-
+              <img src={config.buttonImage} alt="Chatbot" className="rounded-full w-full h-full object-cover" />
             </button>
           )}
         </div>
       </div>
 
-      {/* Chat Window - completely unchanged */}
+      {/* Chat Window */}
       {isOpen && (
         <div className="fixed bottom-6 right-6 z-50 w-100 h-160 max-w-[calc(100vw-3rem)] animate-in fade-in slide-in-from-bottom-8 duration-500">
           <div className="bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-100">
             {/* Header */}
-            <div className="bg-linear-to-r from-green-600 via-emerald-600 to-teal-600 px-6 py-4 flex items-center justify-between">
+            <div className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 px-6 py-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 backdrop-blur-sm rounded-full flex items-center justify-center">
-                  {/* <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                  </svg> */}
-                  <img src="/sana.png" alt="" />
+                <div className="w-10 h-10 backdrop-blur-sm rounded-full flex items-center justify-center overflow-hidden">
+                  <img src={config.logo} alt={`${config.name} logo`} className="w-full h-full object-contain" />
                 </div>
                 <div>
-                  <h3 className="text-white font-semibold text-base">MediCare Hospital</h3>
+                  <h3 className="text-white font-semibold text-base">{config.name}</h3>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <div className="w-2 h-2 bg-green-300 rounded-full animate-pulse" />
                     <p className="text-white/90 text-xs">Sana AI Assistant • Online</p>
@@ -304,48 +321,28 @@ export default function HospitalChatbot({ uniqueId }: HospitalChatbotProps) {
             </div>
 
             {/* Messages Area */}
-            <div className="h-112.5 overflow-y-auto px-6 py-4 bg-linear-to-b from-gray-50 to-white">
+            <div className="h-112.5 overflow-y-auto px-6 py-4 bg-gradient-to-b from-gray-50 to-white">
               {messages.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center px-4">
                   <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                    {/* <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
-                      />
-                    </svg> */}
-
-                    <img src="/sana.png" alt="" />
+                    <img src={config.logo} alt="Logo" className="w-16 h-16 object-contain" />
                   </div>
-                  <h4 className="text-lg font-semibold text-gray-900 mb-2">Welcome to SanaAi</h4>
+                  <h4 className="text-lg font-semibold text-gray-900 mb-2">Welcome to {config.name}</h4>
                   <p className="text-sm text-gray-600 leading-relaxed">
                     Your AI health assistant is ready to help. Choose a quick action or type your message below.
                   </p>
 
                   <div className="mt-6 flex flex-col gap-2 w-full">
-                    <button
-                      onClick={() => handleQueryClick("appointment")}
-                      className="px-4 py-3 bg-transparent hover:bg-green-50 rounded-xl text-sm font-medium text-green-700 transition-colors text-left flex items-center gap-2"
-                    >
-                      <span>🩺</span>
-                      <span>Book an Appointment</span>
-                    </button>
-                    <button
-                      onClick={() => handleQueryClick("report")}
-                      className="px-4 py-3 bg-transparent hover:bg-green-50 rounded-xl text-sm font-medium text-emerald-700 transition-colors text-left flex items-center gap-2"
-                    >
-                      <span>📄</span>
-                      <span>Upload Medical Report</span>
-                    </button>
-                    <button
-                      onClick={() => handleQueryClick("assistant")}
-                      className="px-4 py-3 bg-transparent hover:bg-green-50 rounded-xl text-sm font-medium text-teal-700 transition-colors text-left flex items-center gap-2"
-                    >
-                      <span>💬</span>
-                      <span>Talk to AI Health Assistant</span>
-                    </button>
+                    {queryOptions.map((query) => (
+                      <button
+                        key={query.type}
+                        onClick={() => handleQueryClick(query.type)}
+                        className="px-4 py-3 bg-transparent hover:bg-green-50 rounded-xl text-sm font-medium text-green-700 transition-colors text-left flex items-center gap-2"
+                      >
+                        <span>{query.emoji}</span>
+                        <span>{query.text}</span>
+                      </button>
+                    ))}
                   </div>
                 </div>
               ) : (
@@ -370,8 +367,8 @@ export default function HospitalChatbot({ uniqueId }: HospitalChatbotProps) {
                             className={cn(
                               "px-4 py-3 rounded-2xl shadow-sm transition-all duration-300",
                               message.type === "user"
-                                ? "bg-linear-to-br from-green-500 via-emerald-500 to-green-600 text-white rounded-br-sm"
-                                : "bg-linear-to-br from-green-50 to-emerald-50 text-gray-800 border border-green-100 rounded-bl-sm",
+                                ? "bg-gradient-to-br from-green-500 via-emerald-500 to-green-600 text-white rounded-br-sm"
+                                : "bg-gradient-to-br from-green-50 to-emerald-50 text-gray-800 border border-green-100 rounded-bl-sm"
                             )}
                           >
                             <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
@@ -393,7 +390,7 @@ export default function HospitalChatbot({ uniqueId }: HospitalChatbotProps) {
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                                   </svg>
                                 )}
-                                <span className={cn("text-xs transition-colors", copiedId === message.id ? "text-green-600" : "text-gray-600")}>
+                                <span className={cn("text-xs", copiedId === message.id ? "text-green-600" : "text-gray-600")}>
                                   {copiedId === message.id ? "Copied!" : "Copy"}
                                 </span>
                               </button>
@@ -401,7 +398,7 @@ export default function HospitalChatbot({ uniqueId }: HospitalChatbotProps) {
                               <button
                                 onClick={() => handleReplyToMessage(message)}
                                 className="flex items-center gap-1.5 px-2 py-1 hover:bg-gray-100 rounded transition-colors"
-                                title="Reply to message"
+                                title="Reply"
                               >
                                 <svg className="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
@@ -451,26 +448,21 @@ export default function HospitalChatbot({ uniqueId }: HospitalChatbotProps) {
                 <Button
                   onClick={handleSendMessage}
                   disabled={!inputValue.trim()}
-                  className="w-10 h-10 rounded-xl bg-linear-to-br from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm hover:shadow-md flex items-center justify-center p-0 mb-0.5"
+                  className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm hover:shadow-md flex items-center justify-center p-0 mb-0.5"
                 >
                   <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                   </svg>
                 </Button>
               </div>
-               <div className="text-xs text-gray-400 mt-2 text-center">
-                {/* <img src="/emr.jpg" alt="" className="h-4 w-4" /> */}
-            Powered by &nbsp;
-            <span className="text-green-600 font-bold">
-              EMRCHains
-            </span>
-          </div>
-            </div>  
+
+              <div className="text-xs text-gray-400 mt-2 text-center">
+                Powered by <span className="text-green-600 font-bold">EMRChains</span>
+              </div>
+            </div>
           </div>
         </div>
       )}
-    
-   
     </>
   )
 }
