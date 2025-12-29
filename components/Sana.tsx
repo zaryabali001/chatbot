@@ -1,5 +1,5 @@
 /* eslint-disable @next/next/no-img-element */
-"use client"
+"use client";
 
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
@@ -33,7 +33,7 @@ const HOSPITAL_CONFIGS: Record<string, HospitalConfig> = {
   },
 }
 
-export default function HospitalChatbot() {
+export default function Sana() {
   const searchParams = useSearchParams()
 
   // Read from plugin via URL: ?user_id=medi-care-123&user_name=MediCare%20Hospital
