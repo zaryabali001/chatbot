@@ -36,11 +36,12 @@ const HOSPITAL_CONFIGS: Record<string, HospitalConfig> = {
 export default function Sana() {
   const searchParams = useSearchParams()
 
-  // Read from WordPress plugin via URL: ?unique_id=Pathadont-Clinic-2025
-  const urlUniqueId = searchParams.get("unique_id") || ""
+  // Read from plugin via URL: ?user_id=medi-care-123&user_name=MediCare%20Hospital
+  const urlUserId = searchParams.get("user_id") || ""
+  const urlUserName = searchParams.get("user_name") ? decodeURIComponent(searchParams.get("user_name")!) : ""
 
-  const uniqueId = urlUniqueId || "default"
-  const hospitalName = HOSPITAL_CONFIGS[uniqueId]?.name || "Your Hospital"
+  const uniqueId = urlUserId || "default"
+  const hospitalName = urlUserName || HOSPITAL_CONFIGS[uniqueId]?.name || "Your Hospital"
 
   const config = HOSPITAL_CONFIGS[uniqueId] || HOSPITAL_CONFIGS.default
   const logo = config.logo || "/sana.png"
