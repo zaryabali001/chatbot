@@ -203,39 +203,49 @@ export default function Sana() {
         content: msg.content,
       }))
 
+      const payload = {
+        unique_id: uniqueId,
+        query: query,
+        history: history,
+      }
+
+      console.log("Sending to API:", payload)
+
       const response = await fetch("https://sana.emrchains.com/api3/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Accept": "text/plain; charset=utf-8",
         },
-        body: JSON.stringify({
-          unique_id: uniqueId,
-          query: query,
-          history: history,
-        }),
+        body: JSON.stringify(payload),
       })
+
+      console.log("API Response Status:", response.status)
 
       let aiContent = ""
       if (response.ok) {
         aiContent = await response.text()
+        console.log("API Response Content:", aiContent)
       } else {
-        aiContent = "Sorry, I encountered an error processing your request. Please try again."
+        const errorText = await response.text()
+        console.error("API Error Response:", errorText)
+        aiContent = `Error: The API returned status ${response.status}. Please check the console for details.`
       }
 
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: "ai",
-        content: aiContent,
+        content: aiContent || "No response from API",
         timestamp: new Date(),
       }
       setMessages((prev) => [...prev, aiMessage])
     } catch (error) {
       console.error("API Error:", error)
+      const errorMsg = error instanceof Error ? error.message : "Unknown error"
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: "ai",
-        content: "Unable to connect to the AI service. Please check your connection and try again.",
+        content: `Connection Error: ${errorMsg}. Please ensure the API endpoint is accessible.`,
         timestamp: new Date(),
       }
       setMessages((prev) => [...prev, aiMessage])
