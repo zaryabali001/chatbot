@@ -4,6 +4,7 @@
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { useSearchParams } from "next/navigation" // For reading query params
 
 type QueryType = "appointment" | "report" | "assistant" | null
 
@@ -18,36 +19,8 @@ interface Message {
   }
 }
 
-interface HospitalConfig {
-  name: string
-  logo?: string // optional custom logo path
-  buttonImage?: string // optional custom button image
-}
-
-interface HospitalChatbotProps {
-  uniqueId?: string
-}
-
-// === HOSPITAL CONFIGURATION MAP ===
-// Add or update entries here for each hospital using their uniqueId
-const HOSPITAL_CONFIGS: Record<string, HospitalConfig> = {
-  "medi-care-123": {
-    name: "MediCare Hospital",
-    logo: "/sana.png",
-    buttonImage: "/emr.jpg",
-  },
-  "apollo-hospital-456": {
-    name: "Apollo Super Specialty Hospital",
-    logo: "/apollo-logo.png", // you can add custom logos
-    buttonImage: "/apollo-btn.jpg",
-  },
-  "fortis-health-789": {
-    name: "Fortis Healthcare",
-    logo: "/fortis.png",
-    buttonImage: "/fortis-btn.jpg",
-  },
-  // Add more hospitals here...
-  // Fallback for unknown IDs
+// Optional: Keep this for advanced hospitals with custom logos
+const HOSPITAL_CONFIGS: Record<string, { name: string; logo?: string; buttonImage?: string }> = {
   default: {
     name: "Sana AI Health Assistant",
     logo: "/sana.png",
@@ -55,9 +28,21 @@ const HOSPITAL_CONFIGS: Record<string, HospitalConfig> = {
   },
 }
 
-export default function HospitalChatbot({ uniqueId = "default" }: HospitalChatbotProps) {
-  // Get hospital config based on uniqueId
+export default function HospitalChatbot() {
+  const searchParams = useSearchParams()
+
+  // Read from URL: ?user_id=medi-care-123&user_name=MediCare%20Hospital
+  const urlUserId = searchParams.get("user_id") || ""
+  const urlUserName = searchParams.get("user_name") ? decodeURIComponent(searchParams.get("user_name")!) : ""
+
+  // Final values: prioritize URL params, fallback to config or default
+  const uniqueId = urlUserId || "default"
+  const hospitalName = urlUserName || HOSPITAL_CONFIGS[uniqueId]?.name || "Your Hospital"
+
+  // You can extend this to support custom logos via URL too if needed later
   const config = HOSPITAL_CONFIGS[uniqueId] || HOSPITAL_CONFIGS.default
+  const logo = config.logo || "/sana.png"
+  const buttonImage = config.buttonImage || "/emr.jpg"
 
   const [isOpen, setIsOpen] = useState(false)
   const [showQueries, setShowQueries] = useState(false)
@@ -82,7 +67,7 @@ export default function HospitalChatbot({ uniqueId = "default" }: HospitalChatbo
     scrollToBottom()
   }, [messages])
 
-  // Auto-popup sequence effect
+  // Auto-popup sequence
   useEffect(() => {
     if (isOpen || showQueries) return
 
@@ -91,7 +76,6 @@ export default function HospitalChatbot({ uniqueId = "default" }: HospitalChatbo
       if (index < 3) {
         setAutoPopupIndex(index)
         setShowQueries(true)
-
         autoPopupTimeoutRef.current = setTimeout(() => {
           setShowQueries(false)
           index++
@@ -101,7 +85,6 @@ export default function HospitalChatbot({ uniqueId = "default" }: HospitalChatbo
         }, 2000)
       }
     }
-
     autoPopupTimeoutRef.current = setTimeout(showNext, 1000)
 
     return () => {
@@ -117,9 +100,7 @@ export default function HospitalChatbot({ uniqueId = "default" }: HospitalChatbo
   }
 
   const handleMouseLeave = () => {
-    timeoutRef.current = setTimeout(() => {
-      setShowQueries(false)
-    }, 300)
+    timeoutRef.current = setTimeout(() => setShowQueries(false), 300)
   }
 
   const handleQueryClick = (type: QueryType) => {
@@ -129,31 +110,20 @@ export default function HospitalChatbot({ uniqueId = "default" }: HospitalChatbo
 
     let userContent = ""
     switch (type) {
-      case "appointment":
-        userContent = "Book an Appointment"
-        break
-      case "report":
-        userContent = "Upload Medical Report"
-        break
-      case "assistant":
-        userContent = "Talk to AI Health Assistant"
-        break
+      case "appointment": userContent = "Book an Appointment"; break
+      case "report": userContent = "Upload Medical Report"; break
+      case "assistant": userContent = "Talk to AI Health Assistant"; break
     }
 
     if (userContent) {
-      const userMessage: Message = {
-        id: Date.now().toString(),
-        type: "user",
-        content: userContent,
-        timestamp: new Date(),
-      }
+      const userMessage: Message = { id: Date.now().toString(), type: "user", content: userContent, timestamp: new Date() }
       setMessages([userMessage])
 
       setTimeout(() => {
         const aiResponses: Record<string, string> = {
-          appointment: `Great! I can help you book an appointment at ${config.name}. Which department would you like to visit? (e.g., Cardiology, Pediatrics, etc.)`,
+          appointment: `Great! I can help you book an appointment at ${hospitalName}. Which department would you like to visit? (e.g., Cardiology, Pediatrics, etc.)`,
           report: "You can upload your medical report here for analysis. Please share the report or describe your concern.",
-          assistant: `Hello! I'm your AI Health Assistant at ${config.name}. How can I help you today? Feel free to describe symptoms, ask about conditions, or get general health advice.`,
+          assistant: `Hello! I'm your AI Health Assistant at ${hospitalName}. How can I help you today? Feel free to describe symptoms, ask about conditions, or get general health advice.`,
         }
 
         const aiMessage: Message = {
@@ -162,7 +132,7 @@ export default function HospitalChatbot({ uniqueId = "default" }: HospitalChatbo
           content: aiResponses[type!],
           timestamp: new Date(),
         }
-        setMessages((prev) => [...prev, aiMessage])
+        setMessages(prev => [...prev, aiMessage])
       }, 800)
     }
   }
@@ -175,15 +145,10 @@ export default function HospitalChatbot({ uniqueId = "default" }: HospitalChatbo
       type: "user",
       content: inputValue,
       timestamp: new Date(),
-      ...(replyingTo && {
-        replyTo: {
-          id: replyingTo.id,
-          content: replyingTo.content,
-        },
-      }),
+      ...(replyingTo && { replyTo: { id: replyingTo.id, content: replyingTo.content } }),
     }
 
-    setMessages((prev) => [...prev, userMessage])
+    setMessages(prev => [...prev, userMessage])
     setInputValue("")
     setReplyingTo(null)
 
@@ -191,10 +156,10 @@ export default function HospitalChatbot({ uniqueId = "default" }: HospitalChatbo
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: "ai",
-        content: `Thank you for reaching out to ${config.name}. Our medical team will review your message shortly. Would you like to schedule a consultation?`,
+        content: `Thank you for reaching out to ${hospitalName}. Our medical team will review your message shortly. Would you like to schedule a consultation?`,
         timestamp: new Date(),
       }
-      setMessages((prev) => [...prev, aiMessage])
+      setMessages(prev => [...prev, aiMessage])
     }, 1000)
   }
 
@@ -224,7 +189,7 @@ export default function HospitalChatbot({ uniqueId = "default" }: HospitalChatbo
 
   return (
     <>
-      {/* Floating Chatbot Button */}
+      {/* Floating Button */}
       <div className="max-w-[calc(100vw-3rem)] fixed bottom-6 right-6 pointer-events-none z-50">
         <div
           ref={containerRef}
@@ -232,7 +197,6 @@ export default function HospitalChatbot({ uniqueId = "default" }: HospitalChatbo
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
         >
-          {/* Persistent Label */}
           {!isOpen && (
             <div className="absolute right-full mr-4 whitespace-nowrap pointer-events-none">
               <span className="bg-gradient-to-r from-green-600 to-emerald-600 text-white text-sm font-medium px-4 py-2 rounded-full shadow-lg">
@@ -241,7 +205,6 @@ export default function HospitalChatbot({ uniqueId = "default" }: HospitalChatbo
             </div>
           )}
 
-          {/* Query Popups */}
           {showQueries && !isOpen && (
             <div className="absolute bottom-20 right-0 flex flex-col gap-3 mb-2 animate-in fade-in slide-in-from-bottom-4 duration-300">
               {queryOptions.map((query, index) => (
@@ -264,14 +227,13 @@ export default function HospitalChatbot({ uniqueId = "default" }: HospitalChatbo
             </div>
           )}
 
-          {/* Main Button */}
           {!isOpen && (
             <button
               onClick={() => setIsOpen(true)}
               className="w-16 h-16 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center justify-center group relative animate-in fade-in zoom-in"
             >
               <div className="absolute inset-0 rounded-full bg-green-400 animate-ping opacity-20" />
-              <img src={config.buttonImage} alt="Chatbot" className="rounded-full w-full h-full object-cover" />
+              <img src={buttonImage} alt="Chatbot" className="rounded-full w-full h-full object-cover" />
             </button>
           )}
         </div>
@@ -285,34 +247,23 @@ export default function HospitalChatbot({ uniqueId = "default" }: HospitalChatbo
             <div className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 px-6 py-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 backdrop-blur-sm rounded-full flex items-center justify-center overflow-hidden">
-                  <img src={config.logo} alt={`${config.name} logo`} className="w-full h-full object-contain" />
+                  <img src={logo} alt="Logo" className="w-full h-full object-contain" />
                 </div>
                 <div>
-                  <h3 className="text-white font-semibold text-base">{config.name}</h3>
+                  <h3 className="text-white font-semibold text-base">{hospitalName}</h3>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <div className="w-2 h-2 bg-green-300 rounded-full animate-pulse" />
                     <p className="text-white/90 text-xs">Sana AI Assistant • Online</p>
                   </div>
                 </div>
               </div>
-
               <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setIsOpen(false)}
-                  className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 backdrop-blur-sm flex items-center justify-center transition-colors"
-                >
+                <button onClick={() => setIsOpen(false)} className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 backdrop-blur-sm flex items-center justify-center transition-colors">
                   <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
-                <button
-                  onClick={() => {
-                    setIsOpen(false)
-                    setMessages([])
-                    setReplyingTo(null)
-                  }}
-                  className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 backdrop-blur-sm flex items-center justify-center transition-colors"
-                >
+                <button onClick={() => { setIsOpen(false); setMessages([]); setReplyingTo(null); }} className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 backdrop-blur-sm flex items-center justify-center transition-colors">
                   <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
@@ -320,18 +271,17 @@ export default function HospitalChatbot({ uniqueId = "default" }: HospitalChatbo
               </div>
             </div>
 
-            {/* Messages Area */}
+            {/* Messages & Input - same as before */}
             <div className="h-112.5 overflow-y-auto px-6 py-4 bg-gradient-to-b from-gray-50 to-white">
               {messages.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center px-4">
                   <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                    <img src={config.logo} alt="Logo" className="w-16 h-16 object-contain" />
+                    <img src={logo} alt="Logo" className="w-16 h-16 object-contain" />
                   </div>
-                  <h4 className="text-lg font-semibold text-gray-900 mb-2">Welcome to {config.name}</h4>
+                  <h4 className="text-lg font-semibold text-gray-900 mb-2">Welcome to {hospitalName}</h4>
                   <p className="text-sm text-gray-600 leading-relaxed">
                     Your AI health assistant is ready to help. Choose a quick action or type your message below.
                   </p>
-
                   <div className="mt-6 flex flex-col gap-2 w-full">
                     {queryOptions.map((query) => (
                       <button
@@ -346,45 +296,35 @@ export default function HospitalChatbot({ uniqueId = "default" }: HospitalChatbo
                   </div>
                 </div>
               ) : (
+                // ... (messages rendering - unchanged from your original)
                 <div className="space-y-4">
                   {messages.map((message) => (
                     <div key={message.id}>
                       {message.replyTo && message.type === "user" && (
                         <div className="flex justify-end mb-1">
                           <div className="max-w-[80%] px-3 py-1.5 bg-gray-100 rounded-lg text-xs text-gray-600 italic border-l-2 border-green-500">
-                            Replying to: {message.replyTo.content.substring(0, 50)}
-                            {message.replyTo.content.length > 50 ? "..." : ""}
+                            Replying to: {message.replyTo.content.substring(0, 50)}{message.replyTo.content.length > 50 ? "..." : ""}
                           </div>
                         </div>
                       )}
-                      <div
-                        className={cn("flex", message.type === "user" ? "justify-end" : "justify-start")}
+                      <div className={cn("flex", message.type === "user" ? "justify-end" : "justify-start")}
                         onMouseEnter={() => setHoveredMessage(message.id)}
-                        onMouseLeave={() => setHoveredMessage(null)}
-                      >
+                        onMouseLeave={() => setHoveredMessage(null)}>
                         <div className={cn("max-w-[80%] relative group")}>
-                          <div
-                            className={cn(
-                              "px-4 py-3 rounded-2xl shadow-sm transition-all duration-300",
-                              message.type === "user"
-                                ? "bg-gradient-to-br from-green-500 via-emerald-500 to-green-600 text-white rounded-br-sm"
-                                : "bg-gradient-to-br from-green-50 to-emerald-50 text-gray-800 border border-green-100 rounded-bl-sm"
-                            )}
-                          >
+                          <div className={cn(
+                            "px-4 py-3 rounded-2xl shadow-sm transition-all duration-300",
+                            message.type === "user"
+                              ? "bg-gradient-to-br from-green-500 via-emerald-500 to-green-600 text-white rounded-br-sm"
+                              : "bg-gradient-to-br from-green-50 to-emerald-50 text-gray-800 border border-green-100 rounded-bl-sm"
+                          )}>
                             <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
                           </div>
-
+                          {/* Copy & Reply buttons - unchanged */}
                           {message.type === "ai" && hoveredMessage === message.id && (
                             <div className="absolute -bottom-8 left-0 flex items-center gap-2 bg-white rounded-lg shadow-lg border border-gray-200 px-2 py-1 animate-in fade-in slide-in-from-top-2 duration-200">
-                              <button
-                                onClick={() => handleCopyMessage(message.content, message.id)}
-                                className="flex items-center gap-1.5 px-2 py-1 hover:bg-gray-100 rounded transition-all duration-200"
-                                title="Copy message"
-                              >
+                              <button onClick={() => handleCopyMessage(message.content, message.id)} className="flex items-center gap-1.5 px-2 py-1 hover:bg-gray-100 rounded transition-all duration-200" title="Copy">
                                 {copiedId === message.id ? (
-                                  <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                                    <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" />
-                                  </svg>
+                                  <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" /></svg>
                                 ) : (
                                   <svg className="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -395,11 +335,7 @@ export default function HospitalChatbot({ uniqueId = "default" }: HospitalChatbo
                                 </span>
                               </button>
                               <div className="w-px h-4 bg-gray-300" />
-                              <button
-                                onClick={() => handleReplyToMessage(message)}
-                                className="flex items-center gap-1.5 px-2 py-1 hover:bg-gray-100 rounded transition-colors"
-                                title="Reply"
-                              >
+                              <button onClick={() => handleReplyToMessage(message)} className="flex items-center gap-1.5 px-2 py-1 hover:bg-gray-100 rounded transition-colors" title="Reply">
                                 <svg className="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
                                 </svg>
@@ -424,10 +360,7 @@ export default function HospitalChatbot({ uniqueId = "default" }: HospitalChatbo
                     <p className="text-xs font-medium text-green-700 mb-1">Replying to:</p>
                     <p className="text-xs text-gray-600 truncate">{replyingTo.content}</p>
                   </div>
-                  <button
-                    onClick={() => setReplyingTo(null)}
-                    className="p-1 hover:bg-green-100 rounded transition-colors shrink-0"
-                  >
+                  <button onClick={() => setReplyingTo(null)} className="p-1 hover:bg-green-100 rounded transition-colors shrink-0">
                     <svg className="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
