@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client"
 
 import { useState, useRef, useEffect } from "react"
@@ -243,12 +244,12 @@ export default function HospitalChatbot({ uniqueId }: HospitalChatbotProps) {
               className="w-16 h-16 rounded-full bg-linear-to-br from-green-500 to-emerald-600 shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center justify-center group relative animate-in fade-in zoom-in"
             >
               <div className="absolute inset-0 rounded-full bg-green-400 animate-ping opacity-20" />
-              <div className="absolute inset-0 rounded-full bg-linear-to-br from-green-500 to-emerald-600 opacity-75 group-hover:opacity-100 transition-opacity" />
+              <div className="absolute inset-0 rounded-full bg-linear-to-bropacity-75 group-hover:opacity-100 transition-opacity" />
 
               {/* <svg className="w-8 h-8 text-white relative z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
               </svg> */}
-
+<img src="/emr.jpg" alt="" className="rounded-full" />
              
 
             </button>
@@ -263,10 +264,11 @@ export default function HospitalChatbot({ uniqueId }: HospitalChatbotProps) {
             {/* Header */}
             <div className="bg-linear-to-r from-green-600 via-emerald-600 to-teal-600 px-6 py-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
+                <div className="w-10 h-10 backdrop-blur-sm rounded-full flex items-center justify-center">
                   {/* <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
                   </svg> */}
+                  <img src="/sana.png" alt="" />
                 </div>
                 <div>
                   <h3 className="text-white font-semibold text-base">MediCare Hospital</h3>
@@ -305,15 +307,17 @@ export default function HospitalChatbot({ uniqueId }: HospitalChatbotProps) {
             <div className="h-112.5 overflow-y-auto px-6 py-4 bg-linear-to-b from-gray-50 to-white">
               {messages.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center px-4">
-                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                    <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                    {/* <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         strokeWidth={2}
                         d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
                       />
-                    </svg>
+                    </svg> */}
+
+                    <img src="/sana.png" alt="" />
                   </div>
                   <h4 className="text-lg font-semibold text-gray-900 mb-2">Welcome to SanaAi</h4>
                   <p className="text-sm text-gray-600 leading-relaxed">
@@ -455,6 +459,7 @@ export default function HospitalChatbot({ uniqueId }: HospitalChatbotProps) {
                 </Button>
               </div>
                <div className="text-xs text-gray-400 mt-2 text-center">
+                {/* <img src="/emr.jpg" alt="" className="h-4 w-4" /> */}
             Powered by &nbsp;
             <span className="text-green-600 font-bold">
               EMRCHains
