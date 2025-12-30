@@ -146,7 +146,7 @@ export default function Sana() {
 
   // Current known endpoint (may need update from EMRChains support)
   const getApiEndpoint = () => {
-    return "https://sana.emrchains.com/api3/chat"
+    return "/api/sana-chat"
   }
 
   const sendMessageToApi = async (userMessage: string) => {
@@ -168,6 +168,7 @@ export default function Sana() {
     try {
       const response = await fetch(endpoint, {
         method: "POST",
+        mode: "cors",
         headers: {
           "Content-Type": "application/json",
           "Accept": "text/plain; charset=utf-8",
@@ -187,8 +188,13 @@ export default function Sana() {
       console.log("API Success Response:", data)
       return data.reply || data.message || data.response || data.text || JSON.stringify(data)
     } catch (err) {
-      console.error("Connection failed:", err)
-      return `Connection error: ${err instanceof Error ? err.message : String(err)}`
+      const errorMsg = err instanceof Error ? err.message : String(err)
+      console.error("Fetch error details:", {
+        error: err,
+        message: errorMsg,
+        endpoint: endpoint,
+      })
+      return `Connection error: ${errorMsg}. This might be a CORS issue or the API endpoint is unavailable. Please contact your administrator.`
     }
   }
 
