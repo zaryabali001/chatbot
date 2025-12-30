@@ -184,9 +184,20 @@ export default function Sana() {
         return `Server error: ${response.status}. ${errorText}`
       }
 
-      const data = await response.json()
-      console.log("API Success Response:", data)
-      return data.reply || data.message || data.response || data.text || JSON.stringify(data)
+      const contentType = response.headers.get("content-type")
+      console.log("Response Content-Type:", contentType)
+
+      let data
+      if (contentType && contentType.includes("application/json")) {
+        data = await response.json()
+        console.log("API Success Response (JSON):", data)
+        const responseData = data.data || data
+        return responseData.reply || responseData.message || responseData.response || responseData.text || JSON.stringify(responseData)
+      } else {
+        const textData = await response.text()
+        console.log("API Success Response (Text):", textData)
+        return textData || "Thank you for your message."
+      }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err)
       console.error("Fetch error details:", {

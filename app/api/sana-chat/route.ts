@@ -11,9 +11,12 @@ export async function POST(request: Request) {
       body: JSON.stringify(body),
     })
 
-    const data = await response.text()
+    const contentType = response.headers.get("content-type")
+    const data = contentType && contentType.includes("application/json") 
+      ? await response.json() 
+      : await response.text()
     
-    return new Response(data, {
+    return new Response(JSON.stringify({ data }), {
       status: response.status,
       headers: {
         "Content-Type": "application/json",
