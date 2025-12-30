@@ -278,12 +278,12 @@ export default function Sana() {
   const handleSendMessage = async () => {
     if (!inputValue.trim()) return
 
-    const userContent = inputValue.trim()
+    const userContent = replyingTo ? `In reference to: "${replyingTo.content}"\n\n${inputValue.trim()}` : inputValue.trim()
 
     const userMessage: Message = {
       id: Date.now().toString(),
       type: "user",
-      content: userContent,
+      content: inputValue.trim(),
       timestamp: new Date(),
       ...(replyingTo && {
         replyTo: {
@@ -294,7 +294,6 @@ export default function Sana() {
     }
 
     setMessages(prev => [...prev, userMessage])
-    setChatHistory(prev => [...prev, `User: ${userContent}`])
     setInputValue("")
     setReplyingTo(null)
 
@@ -506,6 +505,18 @@ export default function Sana() {
                       </div>
                     </div>
                   ))}
+
+                  {isTyping && (
+                    <div className="flex justify-start">
+                      <div className="px-4 py-3 bg-gradient-to-br from-green-50 to-emerald-50 border border-green-100 rounded-2xl rounded-bl-sm">
+                        <div className="flex gap-1">
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   <div ref={messagesEndRef} />
                 </div>
