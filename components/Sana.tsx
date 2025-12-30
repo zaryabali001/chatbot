@@ -161,10 +161,12 @@ export default function Sana() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Accept": "text/plain; charset=utf-8",
         },
         body: JSON.stringify({
-          message: userMessage,
           unique_id: uniqueId,
+          query: userMessage,
+          history: [],
         }),
       })
 
