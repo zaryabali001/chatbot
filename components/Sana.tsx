@@ -20,12 +20,33 @@ interface Message {
 export default function Sana() {
   // Only one adjustable value from the WordPress plugin: the unique_id
   // This unique_id identifies the hospital-specific API endpoint
-  const [uniqueId, setUniqueId] = useState<string>("")
+  const [uniqueId, setUniqueId] = useState<string>(() => {
+    // Try to load from localStorage on mount
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('sana_unique_id') || ""
+    }
+    return ""
+  })
   
   // Optional: hospital name and branding can be updated if sent by plugin (fallback to defaults)
-  const [hospitalName, setHospitalName] = useState("Your Hospital")
-  const [logo, setLogo] = useState("/sana.png")
-  const [buttonImage, setButtonImage] = useState("/emr.jpg")
+  const [hospitalName, setHospitalName] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('sana_hospital_name') || "Your Hospital"
+    }
+    return "Your Hospital"
+  })
+  const [logo, setLogo] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('sana_logo') || "/sana.png"
+    }
+    return "/sana.png"
+  })
+  const [buttonImage, setButtonImage] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('sana_button_image') || "/emr.jpg"
+    }
+    return "/emr.jpg"
+  })
 
   // Chat state (unchanged)
   const [isOpen, setIsOpen] = useState(false)
@@ -47,24 +68,44 @@ export default function Sana() {
   // Listen ONLY for updates from the WordPress plugin via postMessage
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
+      console.log("Message received from plugin:", event.data) // Debug log
+      
       if (event.data.type === "SANA_CONFIG_UPDATE") {
         const { unique_id, hospital_name, logo, buttonImage } = event.data
 
         // unique_id is REQUIRED – this defines which backend API to use
-        if (unique_id && unique_id !== uniqueId) {
+        if (unique_id) {
           setUniqueId(unique_id)
+          localStorage.setItem('sana_unique_id', unique_id)
+          console.log("Updated unique_id to:", unique_id)
         }
 
         // Optional display values – only update if provided
-        if (hospital_name) setHospitalName(hospital_name)
-        if (logo) setLogo(logo)
-        if (buttonImage) setButtonImage(buttonImage)
+        if (hospital_name) {
+          setHospitalName(hospital_name)
+          localStorage.setItem('sana_hospital_name', hospital_name)
+        }
+        if (logo) {
+          setLogo(logo)
+          localStorage.setItem('sana_logo', logo)
+        }
+        if (buttonImage) {
+          setButtonImage(buttonImage)
+          localStorage.setItem('sana_button_image', buttonImage)
+        }
       }
     }
 
     window.addEventListener("message", handleMessage)
+    
+    // Request configuration from the WordPress plugin on mount
+    window.parent.postMessage(
+      { type: "SANA_REQUEST_CONFIG" },
+      "*"
+    )
+    
     return () => window.removeEventListener("message", handleMessage)
-  }, [uniqueId])
+  }, [])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
