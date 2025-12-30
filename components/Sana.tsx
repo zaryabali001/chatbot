@@ -158,7 +158,7 @@ export default function Sana() {
   const getApiEndpoint = () => {
     if (!uniqueId) return null
     // Adjust this base URL according to your actual backend
-    return `https://api.emrchains.com/chatbot/${uniqueId}`
+    return `https://sana.emrchains.com/api3/chat${uniqueId}`
   }
 
   // Send message to hospital-specific backend API
