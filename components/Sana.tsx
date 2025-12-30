@@ -1,10 +1,8 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
-
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { useSearchParams } from "next/navigation"
 
 type QueryType = "appointment" | "report" | "assistant" | null
 
@@ -19,29 +17,17 @@ interface Message {
   }
 }
 
-interface HospitalConfig {
-  name: string
-  logo?: string
-  buttonImage?: string
-}
-
-const HOSPITAL_CONFIGS: Record<string, HospitalConfig> = {
-  default: {
-    name: "Sana AI Health Assistant",
-    logo: "/sana.png",
-    buttonImage: "/emr.jpg",
-  },
-}
-
 export default function Sana() {
-  const searchParams = useSearchParams()
-
-  // State for dynamic config
-  const [uniqueId, setUniqueId] = useState("")
+  // Only one adjustable value from the WordPress plugin: the unique_id
+  // This unique_id identifies the hospital-specific API endpoint
+  const [uniqueId, setUniqueId] = useState<string>("")
+  
+  // Optional: hospital name and branding can be updated if sent by plugin (fallback to defaults)
   const [hospitalName, setHospitalName] = useState("Your Hospital")
   const [logo, setLogo] = useState("/sana.png")
   const [buttonImage, setButtonImage] = useState("/emr.jpg")
 
+  // Chat state (unchanged)
   const [isOpen, setIsOpen] = useState(false)
   const [showQueries, setShowQueries] = useState(false)
   const [autoPopupIndex, setAutoPopupIndex] = useState(0)
@@ -50,6 +36,7 @@ export default function Sana() {
   const [replyingTo, setReplyingTo] = useState<Message | null>(null)
   const [hoveredMessage, setHoveredMessage] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [isTyping, setIsTyping] = useState(false) // Visual feedback while waiting for API
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -57,32 +44,18 @@ export default function Sana() {
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
   const autoPopupTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Effect to update config when URL params change
-  useEffect(() => {
-    const urlUserId = searchParams.get("user_id") || ""
-    const urlUserName = searchParams.get("user_name") ? decodeURIComponent(searchParams.get("user_name")!) : ""
-
-    const newUniqueId = urlUserId || "default"
-    const newHospitalName = urlUserName || HOSPITAL_CONFIGS[newUniqueId]?.name || "Your Hospital"
-    const config = HOSPITAL_CONFIGS[newUniqueId] || HOSPITAL_CONFIGS.default
-    const newLogo = config.logo || "/sana.png"
-    const newButtonImage = config.buttonImage || "/emr.jpg"
-
-    // Only update if values changed
-    setUniqueId(newUniqueId)
-    setHospitalName(newHospitalName)
-    setLogo(newLogo)
-    setButtonImage(newButtonImage)
-  }, [searchParams])
-
-  // Effect to listen for postMessage updates from WordPress plugin
+  // Listen ONLY for updates from the WordPress plugin via postMessage
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      // Verify message origin (add your domain for production)
       if (event.data.type === "SANA_CONFIG_UPDATE") {
         const { unique_id, hospital_name, logo, buttonImage } = event.data
 
-        if (unique_id) setUniqueId(unique_id)
+        // unique_id is REQUIRED – this defines which backend API to use
+        if (unique_id && unique_id !== uniqueId) {
+          setUniqueId(unique_id)
+        }
+
+        // Optional display values – only update if provided
         if (hospital_name) setHospitalName(hospital_name)
         if (logo) setLogo(logo)
         if (buttonImage) setButtonImage(buttonImage)
@@ -91,7 +64,7 @@ export default function Sana() {
 
     window.addEventListener("message", handleMessage)
     return () => window.removeEventListener("message", handleMessage)
-  }, [])
+  }, [uniqueId])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -101,6 +74,7 @@ export default function Sana() {
     scrollToBottom()
   }, [messages])
 
+  // Auto-popup quick actions (unchanged)
   useEffect(() => {
     if (isOpen || showQueries) return
 
@@ -109,7 +83,6 @@ export default function Sana() {
       if (index < 3) {
         setAutoPopupIndex(index)
         setShowQueries(true)
-
         autoPopupTimeoutRef.current = setTimeout(() => {
           setShowQueries(false)
           index++
@@ -140,7 +113,46 @@ export default function Sana() {
     }, 300)
   }
 
-  const handleQueryClick = (type: QueryType) => {
+  // Construct the real API endpoint using the unique_id from the plugin
+  const getApiEndpoint = () => {
+    if (!uniqueId) return null
+    // Adjust this base URL according to your actual backend
+    return `https://api.emrchains.com/chatbot/${uniqueId}`
+  }
+
+  // Send message to hospital-specific backend API
+  const sendMessageToApi = async (userMessage: string) => {
+    const endpoint = getApiEndpoint()
+    if (!endpoint) {
+      console.error("No unique_id provided – cannot send message")
+      return "I'm sorry, the assistant is not configured yet. Please try again later."
+    }
+
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: userMessage,
+          // You can include conversation history here if needed
+          // history: messages.slice(-10), // last 10 messages for context
+        }),
+      })
+
+      if (!response.ok) throw new Error("API error")
+
+      const data = await response.json()
+      // Adjust according to your actual API response format
+      return data.reply || data.message || "Thank you for your message."
+    } catch (err) {
+      console.error("Chat API error:", err)
+      return "Sorry, I'm having trouble connecting right now. Please try again in a few moments."
+    }
+  }
+
+  const handleQueryClick = async (type: QueryType) => {
     setIsOpen(true)
     setShowQueries(false)
     if (autoPopupTimeoutRef.current) clearTimeout(autoPopupTimeoutRef.current)
@@ -167,25 +179,21 @@ export default function Sana() {
       }
       setMessages([userMessage])
 
-      setTimeout(() => {
-        const aiResponses: Record<string, string> = {
-          appointment: `Great! I can help you book an appointment at ${hospitalName}. Which department would you like to visit? (e.g., Cardiology, Pediatrics, etc.)`,
-          report: "You can upload your medical report here for analysis. Please share the report or describe your concern.",
-          assistant: `Hello! I'm your AI Health Assistant at ${hospitalName}. How can I help you today? Feel free to describe symptoms, ask about conditions, or get general health advice.`,
-        }
+      setIsTyping(true)
+      const aiResponse = await sendMessageToApi(userContent)
+      setIsTyping(false)
 
-        const aiMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          type: "ai",
-          content: aiResponses[type!],
-          timestamp: new Date(),
-        }
-        setMessages((prev) => [...prev, aiMessage])
-      }, 800)
+      const aiMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        type: "ai",
+        content: aiResponse.replace(/\{hospital_name\}/g, hospitalName), // optional templating
+        timestamp: new Date(),
+      }
+      setMessages((prev) => [...prev, aiMessage])
     }
   }
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!inputValue.trim()) return
 
     const userMessage: Message = {
@@ -204,17 +212,20 @@ export default function Sana() {
     setMessages((prev) => [...prev, userMessage])
     setInputValue("")
     setReplyingTo(null)
+    setIsTyping(true)
 
-    // Simulated AI response (local, no external API)
-    setTimeout(() => {
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        type: "ai",
-        content: `Thank you for reaching out to ${hospitalName}. I understand your concern. Our medical team will review this shortly. In the meantime, would you like to schedule a consultation?`,
-        timestamp: new Date(),
-      }
-      setMessages((prev) => [...prev, aiMessage])
-    }, 1000)
+    const aiResponse = await sendMessageToApi(inputValue)
+
+    setIsTyping(false)
+
+    const aiMessage: Message = {
+      id: (Date.now() + 1).toString(),
+      type: "ai",
+      content: aiResponse.replace(/\{hospital_name\}/g, hospitalName),
+      timestamp: new Date(),
+    }
+
+    setMessages((prev) => [...prev, aiMessage])
   }
 
   const handleCopyMessage = (content: string, id: string) => {
@@ -243,7 +254,7 @@ export default function Sana() {
 
   return (
     <>
-      {/* Floating Chatbot Icon with Left Label */}
+      {/* Floating Chatbot Icon */}
       <div className="max-w-[calc(100vw-3rem)] fixed bottom-6 right-6 pointer-events-none z-50">
         <div
           ref={containerRef}
@@ -293,7 +304,7 @@ export default function Sana() {
         </div>
       </div>
 
-      {/* Chat Window – completely unchanged UI */}
+      {/* Chat Window */}
       {isOpen && (
         <div className="fixed bottom-6 right-6 z-50 w-100 h-160 max-w-[calc(100vw-3rem)] animate-in fade-in slide-in-from-bottom-8 duration-500">
           <div className="bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-100">
@@ -310,7 +321,6 @@ export default function Sana() {
                   </div>
                 </div>
               </div>
-
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setIsOpen(false)}
@@ -345,7 +355,6 @@ export default function Sana() {
                   <p className="text-sm text-gray-600 leading-relaxed">
                     Your AI health assistant is ready to help. Choose a quick action or type your message below.
                   </p>
-
                   <div className="mt-6 flex flex-col gap-2 w-full">
                     {queryOptions.map((query) => (
                       <button
@@ -387,7 +396,6 @@ export default function Sana() {
                           >
                             <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
                           </div>
-
                           {message.type === "ai" && hoveredMessage === message.id && (
                             <div className="absolute -bottom-8 left-0 flex items-center gap-2 bg-white rounded-lg shadow-lg border border-gray-200 px-2 py-1 animate-in fade-in slide-in-from-top-2 duration-200">
                               <button
@@ -425,6 +433,20 @@ export default function Sana() {
                       </div>
                     </div>
                   ))}
+
+                  {/* Typing indicator */}
+                  {isTyping && (
+                    <div className="flex justify-start">
+                      <div className="px-4 py-3 bg-gradient-to-br from-green-50 to-emerald-50 border border-green-100 rounded-2xl rounded-bl-sm">
+                        <div className="flex gap-1">
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div ref={messagesEndRef} />
                 </div>
               )}
@@ -460,7 +482,7 @@ export default function Sana() {
                 />
                 <Button
                   onClick={handleSendMessage}
-                  disabled={!inputValue.trim()}
+                  disabled={!inputValue.trim() || isTyping}
                   className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm hover:shadow-md flex items-center justify-center p-0 mb-0.5"
                 >
                   <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
