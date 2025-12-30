@@ -62,6 +62,17 @@ export default function Sana() {
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
   const autoPopupTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
+  // Generate a persistent end user ID (same as in HTML version)
+  const endUserId = useRef<string>("")
+  useEffect(() => {
+    if (!endUserId.current && typeof window !== 'undefined') {
+      endUserId.current = crypto.randomUUID?.() || Date.now().toString(36) + Math.random().toString(36)
+    }
+  }, [])
+
+  // Chat history for context (same as HTML version)
+  const [chatHistory, setChatHistory] = useState<string[]>([])
+
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data.type === "SANA_CONFIG_UPDATE") {
@@ -105,7 +116,6 @@ export default function Sana() {
     scrollToBottom()
   }, [messages])
 
-  // Auto-popup logic unchanged (kept for UX)
   useEffect(() => {
     if (isOpen || showQueries) return
 
@@ -144,7 +154,6 @@ export default function Sana() {
     }, 300)
   }
 
-  // Current known endpoint (may need update from EMRChains support)
   const getApiEndpoint = () => {
     return "https://sana.emrchains.com/api3/chat"
   }
@@ -156,34 +165,84 @@ export default function Sana() {
 
     const endpoint = getApiEndpoint()
 
+    // Add typing indicator
+    setIsTyping(true)
+
+    // Create a temporary bot message placeholder
+    const tempId = Date.now().toString()
+    const tempMessage: Message = {
+      id: tempId,
+      type: "ai",
+      content: "",
+      timestamp: new Date(),
+    }
+    setMessages(prev => [...prev, tempMessage])
+
+    let fullResponse = ""
+
     try {
       const response = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Accept: "application/json",
         },
         body: JSON.stringify({
-          message: userMessage,
-          unique_id: uniqueId,
+          query: userMessage,
+          unique_id: uniqueId,           // Exactly like in the working HTML version
+          end_user_id: endUserId.current,
+          history: chatHistory,
         }),
       })
 
       if (!response.ok) {
-        const errorText = await response.text().catch(() => "No response body")
-        console.error(`API Error ${response.status}:`, errorText)
-        return "Server error: The Sana AI service is currently unavailable. Please try again later or contact EMRChains support."
+        throw new Error(`HTTP ${response.status}`)
       }
 
-      const data = await response.json()
-      console.log("API Success Response:", data)
-      return data.reply || data.message || data.response || "Thank you for your message."
+      if (!response.body) {
+        const data = await response.json()
+        fullResponse = data.reply || data.message || data.response || "Thank you for your message."
+      } else {
+        const reader = response.body.getReader()
+        const decoder = new TextDecoder("utf-8")
+
+        while (true) {
+          const { value, done } = await reader.read()
+          if (done) break
+
+          const chunk = decoder.decode(value, { stream: true })
+          fullResponse += chunk
+
+          // Update the temporary message with streaming content
+          setMessages(prev =>
+            prev.map(msg =>
+              msg.id === tempId ? { ...msg, content: fullResponse.replace(/\{hospital_name\}/g, hospitalName) } : msg
+            )
+          )
+          scrollToBottom()
+        }
+      }
+
+      // Final update
+      setMessages(prev =>
+        prev.map(msg =>
+          msg.id === tempId ? { ...msg, content: fullResponse.replace(/\{hospital_name\}/g, hospitalName) } : msg
+        )
+      )
+
+      // Update history
+      setChatHistory(prev => [...prev, `User: ${userMessage}`, `Assistant: ${fullResponse}`])
+
+      setIsTyping(false)
+      return fullResponse
     } catch (err) {
-      console.error("Connection failed:", err)
-      return "Connection failed: Unable to reach Sana AI server. The service may be down. Contact EMRChains via WhatsApp: +92 316 5762416"
+      console.error("API Error:", err)
+      setMessages(prev => prev.filter(msg => msg.id !== tempId))
+      setIsTyping(false)
+      return "Sorry, I'm having trouble connecting right now. Please try again later."
     }
   }
 
-  // Rest of the code (handleQueryClick, handleSendMessage, UI) remains the same as previous version
   const handleQueryClick = async (type: QueryType) => {
     setIsOpen(true)
     setShowQueries(false)
@@ -210,28 +269,21 @@ export default function Sana() {
         timestamp: new Date(),
       }
       setMessages([userMessage])
+      setChatHistory([`User: ${userContent}`])
 
-      setIsTyping(true)
-      const aiResponse = await sendMessageToApi(userContent)
-      setIsTyping(false)
-
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        type: "ai",
-        content: aiResponse.replace(/\{hospital_name\}/g, hospitalName),
-        timestamp: new Date(),
-      }
-      setMessages((prev) => [...prev, aiMessage])
+      await sendMessageToApi(userContent)
     }
   }
 
   const handleSendMessage = async () => {
     if (!inputValue.trim()) return
 
+    const userContent = inputValue.trim()
+
     const userMessage: Message = {
       id: Date.now().toString(),
       type: "user",
-      content: inputValue,
+      content: userContent,
       timestamp: new Date(),
       ...(replyingTo && {
         replyTo: {
@@ -241,23 +293,12 @@ export default function Sana() {
       }),
     }
 
-    setMessages((prev) => [...prev, userMessage])
+    setMessages(prev => [...prev, userMessage])
+    setChatHistory(prev => [...prev, `User: ${userContent}`])
     setInputValue("")
     setReplyingTo(null)
-    setIsTyping(true)
 
-    const aiResponse = await sendMessageToApi(inputValue)
-
-    setIsTyping(false)
-
-    const aiMessage: Message = {
-      id: (Date.now() + 1).toString(),
-      type: "ai",
-      content: aiResponse.replace(/\{hospital_name\}/g, hospitalName),
-      timestamp: new Date(),
-    }
-
-    setMessages((prev) => [...prev, aiMessage])
+    await sendMessageToApi(userContent)
   }
 
   const handleCopyMessage = (content: string, id: string) => {
@@ -465,18 +506,6 @@ export default function Sana() {
                       </div>
                     </div>
                   ))}
-
-                  {isTyping && (
-                    <div className="flex justify-start">
-                      <div className="px-4 py-3 bg-gradient-to-br from-green-50 to-emerald-50 border border-green-100 rounded-2xl rounded-bl-sm">
-                        <div className="flex gap-1">
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
-                        </div>
-                      </div>
-                    </div>
-                  )}
 
                   <div ref={messagesEndRef} />
                 </div>
