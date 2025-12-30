@@ -151,10 +151,19 @@ export default function Sana() {
 
   const sendMessageToApi = async (userMessage: string) => {
     if (!uniqueId) {
+      console.warn("Missing unique_id")
       return "Error: Hospital configuration (Unique ID) is missing. Please contact your administrator."
     }
 
     const endpoint = getApiEndpoint()
+    const payload = {
+      unique_id: uniqueId,
+      query: userMessage,
+      history: [],
+    }
+
+    console.log("Sending API request to:", endpoint)
+    console.log("Payload:", payload)
 
     try {
       const response = await fetch(endpoint, {
@@ -163,25 +172,23 @@ export default function Sana() {
           "Content-Type": "application/json",
           "Accept": "text/plain; charset=utf-8",
         },
-        body: JSON.stringify({
-          unique_id: uniqueId,
-          query: userMessage,
-          history: [],
-        }),
+        body: JSON.stringify(payload),
       })
+
+      console.log("API Response Status:", response.status)
 
       if (!response.ok) {
         const errorText = await response.text().catch(() => "No response body")
         console.error(`API Error ${response.status}:`, errorText)
-        return "Server error: The Sana AI service is currently unavailable. Please try again later or contact EMRChains support."
+        return `Server error: ${response.status}. ${errorText}`
       }
 
       const data = await response.json()
       console.log("API Success Response:", data)
-      return data.reply || data.message || data.response || "Thank you for your message."
+      return data.reply || data.message || data.response || data.text || JSON.stringify(data)
     } catch (err) {
       console.error("Connection failed:", err)
-      return "Connection failed: Unable to reach Sana AI server. The service may be down. Contact EMRChains via WhatsApp: +92 316 5762416"
+      return `Connection error: ${err instanceof Error ? err.message : String(err)}`
     }
   }
 
