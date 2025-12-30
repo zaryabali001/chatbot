@@ -18,29 +18,27 @@ interface Message {
 }
 
 export default function Sana() {
-  // Only one adjustable value from the WordPress plugin: the unique_id
-  // This unique_id identifies the hospital-specific API endpoint
   const [uniqueId, setUniqueId] = useState<string>(() => {
-    // Try to load from localStorage on mount
     if (typeof window !== 'undefined') {
       return localStorage.getItem('sana_unique_id') || ""
     }
     return ""
   })
   
-  // Optional: hospital name and branding can be updated if sent by plugin (fallback to defaults)
   const [hospitalName, setHospitalName] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('sana_hospital_name') || "Your Hospital"
     }
     return "Your Hospital"
   })
+  
   const [logo, setLogo] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('sana_logo') || "/sana.png"
     }
     return "/sana.png"
   })
+  
   const [buttonImage, setButtonImage] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('sana_button_image') || "/emr.jpg"
@@ -48,7 +46,6 @@ export default function Sana() {
     return "/emr.jpg"
   })
 
-  // Chat state (unchanged)
   const [isOpen, setIsOpen] = useState(false)
   const [showQueries, setShowQueries] = useState(false)
   const [autoPopupIndex, setAutoPopupIndex] = useState(0)
@@ -57,7 +54,7 @@ export default function Sana() {
   const [replyingTo, setReplyingTo] = useState<Message | null>(null)
   const [hoveredMessage, setHoveredMessage] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
-  const [isTyping, setIsTyping] = useState(false) // Visual feedback while waiting for API
+  const [isTyping, setIsTyping] = useState(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -65,22 +62,16 @@ export default function Sana() {
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
   const autoPopupTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Listen ONLY for updates from the WordPress plugin via postMessage
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      console.log("Message received from plugin:", event.data) // Debug log
-      
       if (event.data.type === "SANA_CONFIG_UPDATE") {
         const { unique_id, hospital_name, logo, buttonImage } = event.data
 
-        // unique_id is REQUIRED – this defines which backend API to use
         if (unique_id) {
           setUniqueId(unique_id)
           localStorage.setItem('sana_unique_id', unique_id)
-          console.log("Updated unique_id to:", unique_id)
         }
 
-        // Optional display values – only update if provided
         if (hospital_name) {
           setHospitalName(hospital_name)
           localStorage.setItem('sana_hospital_name', hospital_name)
@@ -98,7 +89,6 @@ export default function Sana() {
 
     window.addEventListener("message", handleMessage)
     
-    // Request configuration from the WordPress plugin on mount
     window.parent.postMessage(
       { type: "SANA_REQUEST_CONFIG" },
       "*"
@@ -115,7 +105,6 @@ export default function Sana() {
     scrollToBottom()
   }, [messages])
 
-  // Auto-popup quick actions (unchanged)
   useEffect(() => {
     if (isOpen || showQueries) return
 
@@ -154,20 +143,17 @@ export default function Sana() {
     }, 300)
   }
 
-  // Construct the real API endpoint using the unique_id from the plugin
+  // FIXED: Correct API endpoint - single shared URL
   const getApiEndpoint = () => {
-    if (!uniqueId) return null
-    // Adjust this base URL according to your actual backend
-    return `https://sana.emrchains.com/api3/chat/${uniqueId}`
+    return "https://sana.emrchains.com/api3/chat"
   }
 
-  // Send message to hospital-specific backend API
   const sendMessageToApi = async (userMessage: string) => {
-    const endpoint = getApiEndpoint()
-    if (!endpoint) {
-      console.error("No unique_id provided – cannot send message")
-      return "I'm sorry, the assistant is not configured yet. Please try again later."
+    if (!uniqueId) {
+      return "Configuration error: Hospital ID is missing. Please contact support."
     }
+
+    const endpoint = getApiEndpoint()
 
     try {
       const response = await fetch(endpoint, {
@@ -177,16 +163,18 @@ export default function Sana() {
         },
         body: JSON.stringify({
           message: userMessage,
-          // You can include conversation history here if needed
-          // history: messages.slice(-10), // last 10 messages for context
+          unique_id: uniqueId,  // Critical: send unique_id in body
         }),
       })
 
-      if (!response.ok) throw new Error("API error")
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error("API Error:", response.status, errorText)
+        throw new Error(`HTTP ${response.status}`)
+      }
 
       const data = await response.json()
-      // Adjust according to your actual API response format
-      return data.reply || data.message || "Thank you for your message."
+      return data.reply || data.message || data.response || "Thank you for your message."
     } catch (err) {
       console.error("Chat API error:", err)
       return "Sorry, I'm having trouble connecting right now. Please try again in a few moments."
@@ -227,7 +215,7 @@ export default function Sana() {
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: "ai",
-        content: aiResponse.replace(/\{hospital_name\}/g, hospitalName), // optional templating
+        content: aiResponse.replace(/\{hospital_name\}/g, hospitalName),
         timestamp: new Date(),
       }
       setMessages((prev) => [...prev, aiMessage])
@@ -475,7 +463,6 @@ export default function Sana() {
                     </div>
                   ))}
 
-                  {/* Typing indicator */}
                   {isTyping && (
                     <div className="flex justify-start">
                       <div className="px-4 py-3 bg-gradient-to-br from-green-50 to-emerald-50 border border-green-100 rounded-2xl rounded-bl-sm">
