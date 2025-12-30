@@ -105,6 +105,7 @@ export default function Sana() {
     scrollToBottom()
   }, [messages])
 
+  // Auto-popup logic unchanged (kept for UX)
   useEffect(() => {
     if (isOpen || showQueries) return
 
@@ -143,14 +144,14 @@ export default function Sana() {
     }, 300)
   }
 
-  // FIXED: Correct API endpoint - single shared URL
+  // Current known endpoint (may need update from EMRChains support)
   const getApiEndpoint = () => {
     return "https://sana.emrchains.com/api3/chat"
   }
 
   const sendMessageToApi = async (userMessage: string) => {
     if (!uniqueId) {
-      return "Configuration error: Hospital ID is missing. Please contact support."
+      return "Error: Hospital configuration (Unique ID) is missing. Please contact your administrator."
     }
 
     const endpoint = getApiEndpoint()
@@ -163,24 +164,26 @@ export default function Sana() {
         },
         body: JSON.stringify({
           message: userMessage,
-          unique_id: uniqueId,  // Critical: send unique_id in body
+          unique_id: uniqueId,
         }),
       })
 
       if (!response.ok) {
-        const errorText = await response.text()
-        console.error("API Error:", response.status, errorText)
-        throw new Error(`HTTP ${response.status}`)
+        const errorText = await response.text().catch(() => "No response body")
+        console.error(`API Error ${response.status}:`, errorText)
+        return "Server error: The Sana AI service is currently unavailable. Please try again later or contact EMRChains support."
       }
 
       const data = await response.json()
+      console.log("API Success Response:", data)
       return data.reply || data.message || data.response || "Thank you for your message."
     } catch (err) {
-      console.error("Chat API error:", err)
-      return "Sorry, I'm having trouble connecting right now. Please try again in a few moments."
+      console.error("Connection failed:", err)
+      return "Connection failed: Unable to reach Sana AI server. The service may be down. Contact EMRChains via WhatsApp: +92 316 5762416"
     }
   }
 
+  // Rest of the code (handleQueryClick, handleSendMessage, UI) remains the same as previous version
   const handleQueryClick = async (type: QueryType) => {
     setIsOpen(true)
     setShowQueries(false)
