@@ -149,6 +149,25 @@ export default function Sana() {
     return "/api/sana-chat"
   }
 
+  const formatResponse = (text: string): string => {
+    let formatted = text
+
+    // Make headings bold (lines that look like headings)
+    formatted = formatted.replace(/^([A-Z][^:\n]*:?)$/gm, (match) => {
+      if (match.length > 3) {
+        return `**${match}**`
+      }
+      return match
+    })
+
+    // Format bullet points (lines starting with -, *, or •)
+    formatted = formatted.replace(/^([\s]*)([-*•])\s+/gm, (match, spaces, bullet) => {
+      return `${spaces}• `
+    })
+
+    return formatted
+  }
+
   const sendMessageToApi = async (userMessage: string) => {
     if (!uniqueId) {
       console.warn("Missing unique_id")
@@ -188,16 +207,19 @@ export default function Sana() {
       console.log("Response Content-Type:", contentType)
 
       let data
+      let responseText = ""
       if (contentType && contentType.includes("application/json")) {
         data = await response.json()
         console.log("API Success Response (JSON):", data)
         const responseData = data.data || data
-        return responseData.reply || responseData.message || responseData.response || responseData.text || JSON.stringify(responseData)
+        responseText = responseData.reply || responseData.message || responseData.response || responseData.text || JSON.stringify(responseData)
       } else {
-        const textData = await response.text()
-        console.log("API Success Response (Text):", textData)
-        return textData || "Thank you for your message."
+        responseText = await response.text()
+        console.log("API Success Response (Text):", responseText)
+        responseText = responseText || "Thank you for your message."
       }
+
+      return formatResponse(responseText)
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err)
       console.error("Fetch error details:", {
@@ -452,7 +474,21 @@ export default function Sana() {
                                 : "bg-gradient-to-br from-green-50 to-emerald-50 text-gray-800 border border-green-100 rounded-bl-sm"
                             )}
                           >
-                            <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                            <div className="text-sm leading-relaxed whitespace-pre-wrap">
+                              {message.content.split('\n').map((line, idx) => {
+                                const parts = line.split(/(\*\*.*?\*\*)/g)
+                                return (
+                                  <div key={idx}>
+                                    {parts.map((part, pidx) => {
+                                      if (part.startsWith('**') && part.endsWith('**')) {
+                                        return <strong key={pidx}>{part.slice(2, -2)}</strong>
+                                      }
+                                      return <span key={pidx}>{part}</span>
+                                    })}
+                                  </div>
+                                )
+                              })}
+                            </div>
                           </div>
                           {message.type === "ai" && hoveredMessage === message.id && (
                             <div className="absolute -bottom-8 left-0 flex items-center gap-2 bg-white rounded-lg shadow-lg border border-gray-200 px-2 py-1 animate-in fade-in slide-in-from-top-2 duration-200">
