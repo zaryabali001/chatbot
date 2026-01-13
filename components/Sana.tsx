@@ -335,7 +335,7 @@ export default function Sana() {
   return (
     <>
       {/* Floating Chatbot Icon */}
-      <div className="max-w-[calc(100vw-3rem)] fixed bottom-6 right-6 pointer-events-none z-50">
+      <div className="max-w-[calc(100vw-3rem)] fixed bottom-6 right-6 pointer-events-none z-[9999]">
         <div
           ref={containerRef}
           className="relative flex items-center gap-4 pointer-events-auto"
@@ -375,7 +375,7 @@ export default function Sana() {
           {!isOpen && (
             <button
               onClick={() => setIsOpen(true)}
-              className="w-16 h-16 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center justify-center group relative animate-in fade-in zoom-in"
+              className="w-16 h-16 rounded-full bg-linear-to-br from-green-500 to-emerald-600 shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center justify-center group relative animate-in fade-in zoom-in"
             >
               <div className="absolute inset-0 rounded-full bg-green-400 animate-ping opacity-20" />
               <img src={buttonImage} alt="Chatbot" className="rounded-full w-full h-full object-cover" />
@@ -386,7 +386,7 @@ export default function Sana() {
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 z-50 w-100 h-160 max-w-[calc(100vw-3rem)] animate-in fade-in slide-in-from-bottom-8 duration-500">
+        <div className="fixed bottom-6 right-6 z-[9999] w-100 h-160 max-w-[calc(100vw-3rem)] animate-in fade-in slide-in-from-bottom-8 duration-500">
           <div className="bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-100">
             <div className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 px-6 py-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -540,7 +540,12 @@ export default function Sana() {
                     </div>
                   )}
 
-                  <div ref={messagesEndRef} />
+                  {/* <div ref={messagesEndRef} />
+                  <div className="h-20" />
+                  <div className="h-20" />
+                  <div className="h-20" />
+                  <div className="h-20" />
+                  <div className="h-20" /> */}
                 </div>
               )}
             </div>

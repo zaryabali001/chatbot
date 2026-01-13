@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export default function Page() {
   return (
-    <div className="bg-transparent h-screen  w-screen overflow-hidden">
+    <div >
       {/* Hospital Chatbot */}
       <Suspense fallback={<div>Loading...</div>}>
         <Sana />
