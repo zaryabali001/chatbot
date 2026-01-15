@@ -78,7 +78,7 @@ export default function Sana() {
   const autoPopupTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hoverDelayRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Clear hover delay on unmount
+  // Cleanup hover timeout
   useEffect(() => {
     return () => {
       if (hoverDelayRef.current) clearTimeout(hoverDelayRef.current);
@@ -187,26 +187,16 @@ export default function Sana() {
   const formatResponse = (raw: string): string => {
     let text = raw.trim();
 
-    // 1. Extract real content if wrapped in JSON {"data": "..."}
     try {
       const parsed = JSON.parse(text);
       if (parsed && typeof parsed.data === "string") {
         text = parsed.data;
       }
-    } catch {
-      // not JSON → keep as is
-    }
+    } catch {}
 
-    // 2. Replace literal \n with actual line breaks
     text = text.replace(/\\n/g, "\n");
-
-    // 3. Clean up multiple empty lines
     text = text.replace(/\n\s*\n+/g, "\n\n").trim();
-
-    // 4. Bold numbered questions (1. Something? / 1. Something:)
     text = text.replace(/^(\d+\.\s+)(.*?)(:|\?)$/gm, "$1**$2$3**");
-
-    // 5. Normalize different bullet styles to markdown (-)
     text = text.replace(/^(\s*)([-*•—])\s+/gm, "$1- ");
 
     return text;
@@ -334,7 +324,6 @@ export default function Sana() {
   };
 
   const handleCopyMessage = async (content: string, id: string) => {
-    // Clean markdown bold markers for better copy experience
     const cleanContent = content.replace(/\*\*(.*?)\*\*/g, "$1").trim();
 
     try {
@@ -351,9 +340,10 @@ export default function Sana() {
         document.body.removeChild(textArea);
       }
       setCopiedId(id);
-      setTimeout(() => setCopiedId(null), 1600);
+      setTimeout(() => setCopiedId(null), 2000); // Slightly longer feedback
     } catch (err) {
-      console.error("Failed to copy:", err);
+      console.error("Copy failed:", err);
+      // Optional: alert("Copy failed – please select and copy manually");
     }
   };
 
@@ -576,7 +566,7 @@ export default function Sana() {
                         onMouseLeave={() => {
                           hoverDelayRef.current = setTimeout(() => {
                             setHoveredMessage(null);
-                          }, 300);
+                          }, 800); // Increased delay – gives plenty of time to reach the toolbar
                         }}
                       >
                         <div className="max-w-[82%] relative group">
@@ -617,14 +607,14 @@ export default function Sana() {
 
                           {msg.type === "ai" && hoveredMessage === msg.id && (
                             <div
-                              className="absolute -bottom-10 left-2 flex gap-2 bg-white rounded-lg shadow-md border px-2 py-1.5 text-xs animate-in fade-in slide-in-from-top-3"
+                              className="absolute -bottom-10 left-2 flex gap-2 bg-white rounded-lg shadow-md border px-2 py-1.5 text-xs animate-in fade-in slide-in-from-top-3 z-10"
                               onMouseEnter={() => {
                                 if (hoverDelayRef.current) clearTimeout(hoverDelayRef.current);
                               }}
                               onMouseLeave={() => {
                                 hoverDelayRef.current = setTimeout(() => {
                                   setHoveredMessage(null);
-                                }, 300);
+                                }, 800); // Same increased delay
                               }}
                             >
                               <button
@@ -634,7 +624,7 @@ export default function Sana() {
                                 className="flex items-center gap-1.5 hover:bg-gray-100 px-2 py-1 rounded transition-colors"
                               >
                                 {copiedId === msg.id ? (
-                                  <span className="text-green-600">
+                                  <span className="text-green-600 font-medium">
                                     Copied ✓
                                   </span>
                                 ) : (
@@ -766,6 +756,7 @@ export default function Sana() {
                 <a
                   href="https://emrchains.com"
                   target="_blank"
+                  rel="noopener noreferrer"
                 >
                   Powered by{" "}
                   <span className="text-green-600 font-semibold">
