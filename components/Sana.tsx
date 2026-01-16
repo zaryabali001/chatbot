@@ -430,11 +430,11 @@ export default function Sana() {
             {/* Header */}
             <div className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 px-5 py-4 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full overflow-hidden bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full overflow-hidden bg-white flex items-center justify-center shadow-sm">
                   <img
                     src={logo}
                     alt="Hospital logo"
-                    className="w-full h-full object-contain p-1"
+                    className="w-8 h-8 object-contain p-1 rounded-full bg-white"
                   />
                 </div>
                 <div>
@@ -449,7 +449,7 @@ export default function Sana() {
               </div>
 
               <div className="flex gap-2">
-                {messages.length > 0 && (
+                {/* {messages.length > 0 && (
                   <button
                     onClick={handleClearHistory}
                     className="w-9 h-9 rounded-lg bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors"
@@ -469,7 +469,7 @@ export default function Sana() {
                       />
                     </svg>
                   </button>
-                )}
+                )} */}
                 <button
                   onClick={() => setIsOpen(false)}
                   className="w-9 h-9 rounded-lg bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors"
@@ -521,7 +521,7 @@ export default function Sana() {
                     <img
                       src={logo}
                       alt="Logo"
-                      className="w-14 h-14 object-contain"
+                      className="w-14 h-14 object-contain rounded-full bg-white p-1 shadow"
                     />
                   </div>
                   <h4 className="text-xl font-semibold text-gray-900 mb-3">
@@ -728,7 +728,7 @@ export default function Sana() {
                   className="h-11 w-11 rounded-xl bg-gradient-to-br from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 disabled:opacity-50 transition-all shadow-sm flex items-center justify-center"
                 >
                   <svg
-                    className="w-5 h-5 text-white"
+                    className="w-6 h-6 text-white transform scale-110"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
