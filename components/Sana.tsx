@@ -297,16 +297,16 @@ export default function Sana() {
   return (
     <>
       {/* Floating button + quick actions popup */}
-      <div className="fixed bg-transparent bottom-2 right-6 z-9999 max-w-[calc(100vw-3rem)] pointer-events-none shadow-none border-none" >
+      <div className="fixed bg-transparent bottom-2 right-6 z-9999 max-w-[calc(100vw-3rem)] pointer-events-none " >
         <div
           ref={containerRef}
-          className="relative flex items-center gap-4 pointer-events-auto shadow-none border-none "
+          className="relative flex items-center gap-4 pointer-events-auto  "
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
         >
           {!isOpen && (
             <div className="absolute right-full mr-5 whitespace-nowrap pointer-events-none">
-              <span className="bg-gradient-to-r from-green-600 to-emerald-700 text-white text-sm font-medium px-4 py-2 rounded-full ">
+              <span className="bg-linear-to-r from-green-600 to-emerald-700 text-white text-sm font-medium px-4 py-2 rounded-full ">
                 Chat with Sana AI
               </span>
             </div>
