@@ -319,7 +319,7 @@ export default function Sana() {
                   key={q.type}
                   onClick={() => handleQueryClick(q.type)}
                   className={cn(
-                    "px-6 py-3 backdrop-blur-lg w-70    bg-white/80 border border-white/40 hover:border-green-400 rounded-full shadow-md hover:shadow-lg transition-all hover:scale-105",
+                    "px-6 py-3  w-70    bg-white/80 border border-white/40 hover:border-green-400 rounded-full shadow-md hover:shadow-lg transition-all hover:scale-105",
                     autoPopupIndex === i && "ring-4 ring-green-300 ring-offset-2"
                   )}
                 >
