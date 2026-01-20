@@ -313,19 +313,19 @@ export default function Sana() {
           )}
 
           {showQueries && !isOpen && (
-            <div className="absolute bottom-20 right-0 flex flex-col gap-3 animate-in fade-in slide-in-from-bottom-5 duration-300">
+            <div className="absolute bottom-20 right-0 flex flex-col gap-1 animate-in fade-in slide-in-from-bottom-5 duration-300">
               {queryOptions.map((q, i) => (
                 <button
                   key={q.type}
                   onClick={() => handleQueryClick(q.type)}
                   className={cn(
-                    "px-6 py-3  w-70    bg-white/80 border border-white/40 hover:border-green-400 rounded-full shadow-md hover:shadow-lg transition-all hover:scale-105",
+                    "px-6 py-3  w-60    bg-white/80 border border-white/40 hover:border-green-400 rounded-full shadow-md hover:shadow-lg transition-all hover:scale-105",
                     autoPopupIndex === i && "ring-4 ring-green-300 ring-offset-2"
                   )}
                 >
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">{q.emoji}</span>
-                    <span className="text-sm font-semibold text-gray-800">{q.text}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">{q.emoji}</span>
+                    <span className="text-[12px] font-semibold text-gray-800">{q.text}</span>
                   </div>
                 </button>
               ))}
@@ -402,15 +402,15 @@ export default function Sana() {
                   <p className="text-sm text-gray-600 mb-8 leading-relaxed">
                     Your AI-powered health assistant is here to help.
                   </p>
-                  <div className="w-full space-y-3">
+                  <div className="w-full space-y-1">
                     {queryOptions.map((q) => (
                       <button
                         key={q.type}
                         onClick={() => handleQueryClick(q.type)}
-                        className="w-full py-3.5 px-5 bg-white hover:bg-green-50 border border-gray-200 hover:border-green-300 rounded-xl text-left flex items-center gap-3 transition-colors shadow-sm"
+                        className="w-full py-3.5 px-5 bg-white hover:bg-green-50 border border-gray-200 hover:border-green-300 rounded-xl text-left flex items-center gap-2 transition-colors shadow-sm"
                       >
-                        <span className="text-2xl">{q.emoji}</span>
-                        <span className="font-medium text-gray-800">{q.text}</span>
+                        <span className="text-xl">{q.emoji}</span>
+                        <span className="text-sm font-medium text-gray-800">{q.text}</span>
                       </button>
                     ))}
                   </div>
