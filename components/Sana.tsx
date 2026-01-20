@@ -297,7 +297,7 @@ export default function Sana() {
   return (
     <>
       {/* Floating button + quick actions popup */}
-      <div className="fixed bg-transparent bottom-6 right-6 z-9999 max-w-[calc(100vw-3rem)] pointer-events-none box-shadow: none">
+      <div className="fixed bg-transparent bottom-2 right-6 z-9999 max-w-[calc(100vw-3rem)] pointer-events-none box-shadow: none">
         <div
           ref={containerRef}
           className="relative flex items-center gap-4 pointer-events-auto box-shadow: none"
