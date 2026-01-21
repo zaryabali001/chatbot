@@ -219,7 +219,7 @@ export default function Sana() {
         content = "Book an Appointment";
         break;
       case "report":
-        content = "Upload Medical Report";
+        content = "I need information";
         break;
       case "assistant":
         content = "Talk to AI Health Assistant";
@@ -307,7 +307,7 @@ export default function Sana() {
       text: "Book an Appointment",
       type: "appointment" as QueryType,
     },
-    { emoji: "📄", text: "Upload Medical Report", type: "report" as QueryType },
+    { emoji: "📄", text: "I need information", type: "report" as QueryType },
     {
       emoji: "💬",
       text: "Talk to AI Health Assistant",
