@@ -89,8 +89,6 @@ export default function Sana() {
     };
 
     window.addEventListener("message", handleMessage);
-
-    // Request initial config from parent
     window.parent.postMessage({ type: "SANA_REQUEST_CONFIG" }, "*");
 
     return () => window.removeEventListener("message", handleMessage);
@@ -104,7 +102,7 @@ export default function Sana() {
     scrollToBottom();
   }, [messages, isTyping]);
 
-  // Auto-popup sequence (quick actions)
+  // Auto-popup sequence
   useEffect(() => {
     if (isOpen || showQueries) return;
 
@@ -145,18 +143,35 @@ export default function Sana() {
 
   const getApiEndpoint = () => "/api/sana-chat";
 
-  const formatResponse = (text: string): string => {
-    let formatted = text;
+  const formatResponse = (raw: string): string => {
+    let text = raw.trim();
 
-    // Bold headings
-    formatted = formatted.replace(/^([A-Z][^:\n]*:?)$/gm, (m) =>
-      m.length > 3 ? `**${m}**` : m
+    // 1. Extract real content if wrapped in JSON {"data": "..."}
+    try {
+      const parsed = JSON.parse(text);
+      if (parsed && typeof parsed.data === "string") {
+        text = parsed.data;
+      }
+    } catch {
+      // not JSON → keep as is
+    }
+
+    // 2. Replace literal \n with actual line breaks
+    text = text.replace(/\\n/g, "\n");
+
+    // 3. Clean up multiple empty lines
+    text = text.replace(/\n\s*\n+/g, "\n\n").trim();
+
+    // 4. Bold numbered questions (1. Something? / 1. Something:)
+    text = text.replace(
+      /^(\d+\.\s+)(.*?)(:|\?)$/gm,
+      "$1**$2$3**"
     );
 
-    // Normalize bullets
-    formatted = formatted.replace(/^([\s]*)([-*•])\s+/gm, "$1• ");
+    // 5. Normalize different bullet styles to markdown (-)
+    text = text.replace(/^(\s*)([-*•—])\s+/gm, "$1- ");
 
-    return formatted;
+    return text;
   };
 
   const sendMessageToApi = async (userMessage: string): Promise<string> => {
@@ -168,7 +183,7 @@ export default function Sana() {
     const payload = {
       unique_id: uniqueId,
       query: userMessage,
-      history: [], // you can extend later with real history
+      history: [], // extend later if you want real history
     };
 
     try {
@@ -297,16 +312,16 @@ export default function Sana() {
   return (
     <>
       {/* Floating button + quick actions popup */}
-      <div className="fixed bg-transparent bottom-2 right-6 z-9999 max-w-[calc(100vw-3rem)] pointer-events-none " >
+      <div className="fixed bg-transparent bottom-2 right-6 z-9999 max-w-[calc(100vw-3rem)] pointer-events-none">
         <div
           ref={containerRef}
-          className="relative flex items-center gap-4 pointer-events-auto  "
+          className="relative flex items-center gap-4 pointer-events-auto"
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
         >
           {!isOpen && (
             <div className="absolute right-full mr-5 whitespace-nowrap pointer-events-none">
-              <span className="bg-linear-to-r from-green-600 to-emerald-700 text-white text-sm font-medium px-4 py-2 rounded-full ">
+              <span className="bg-gradient-to-r from-green-600 to-emerald-700 text-white text-sm font-medium px-4 py-2 rounded-full">
                 Chat with Sana AI
               </span>
             </div>
@@ -319,7 +334,7 @@ export default function Sana() {
                   key={q.type}
                   onClick={() => handleQueryClick(q.type)}
                   className={cn(
-                    "px-6 py-3  w-60    bg-white/80 border border-white/40 hover:border-green-400 rounded-full shadow-md hover:shadow-lg transition-all hover:scale-105",
+                    "px-6 py-3 w-60 bg-white/80 border border-white/40 hover:border-green-400 rounded-full shadow-md hover:shadow-lg transition-all hover:scale-105",
                     autoPopupIndex === i && "ring-4 ring-green-300 ring-offset-2"
                   )}
                 >
@@ -348,7 +363,7 @@ export default function Sana() {
         </div>
       </div>
 
-      {/* ── Main Chat Window ── */}
+      {/* Main Chat Window */}
       {isOpen && (
         <div className="fixed bottom-6 right-6 z-[9999] w-[380px] h-[620px] max-h-[calc(100vh-5rem)] max-w-[calc(100vw-2rem)] animate-in fade-in zoom-in-95 duration-400">
           <div className="h-full bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-200 flex flex-col">
@@ -444,7 +459,12 @@ export default function Sana() {
                           >
                             <div className="text-[15px] leading-relaxed whitespace-pre-wrap break-words">
                               {msg.content.split("\n").map((line, i) => (
-                                <div key={i}>
+                                <div
+                                  key={i}
+                                  className={cn(
+                                    line.trim() === "" ? "h-4" : "min-h-[1.5em]"
+                                  )}
+                                >
                                   {line.split(/(\*\*.*?\*\*)/g).map((part, pi) =>
                                     part.startsWith("**") && part.endsWith("**") ? (
                                       <strong key={pi}>{part.slice(2, -2)}</strong>
