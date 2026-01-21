@@ -124,7 +124,8 @@ export default function Sana() {
     autoPopupTimeoutRef.current = setTimeout(showNext, 1400);
 
     return () => {
-      if (autoPopupTimeoutRef.current) clearTimeout(autoPopupTimeoutRef.current);
+      if (autoPopupTimeoutRef.current)
+        clearTimeout(autoPopupTimeoutRef.current);
     };
   }, [isOpen]);
 
@@ -163,10 +164,7 @@ export default function Sana() {
     text = text.replace(/\n\s*\n+/g, "\n\n").trim();
 
     // 4. Bold numbered questions (1. Something? / 1. Something:)
-    text = text.replace(
-      /^(\d+\.\s+)(.*?)(:|\?)$/gm,
-      "$1**$2$3**"
-    );
+    text = text.replace(/^(\d+\.\s+)(.*?)(:|\?)$/gm, "$1**$2$3**");
 
     // 5. Normalize different bullet styles to markdown (-)
     text = text.replace(/^(\s*)([-*•—])\s+/gm, "$1- ");
@@ -304,9 +302,17 @@ export default function Sana() {
   };
 
   const queryOptions = [
-    { emoji: "🩺", text: "Book an Appointment", type: "appointment" as QueryType },
+    {
+      emoji: "🩺",
+      text: "Book an Appointment",
+      type: "appointment" as QueryType,
+    },
     { emoji: "📄", text: "Upload Medical Report", type: "report" as QueryType },
-    { emoji: "💬", text: "Talk to AI Health Assistant", type: "assistant" as QueryType },
+    {
+      emoji: "💬",
+      text: "Talk to AI Health Assistant",
+      type: "assistant" as QueryType,
+    },
   ];
 
   return (
@@ -335,12 +341,15 @@ export default function Sana() {
                   onClick={() => handleQueryClick(q.type)}
                   className={cn(
                     "px-6 py-3 w-60 bg-white/80 border border-white/40 hover:border-green-400 rounded-full shadow-md hover:shadow-lg transition-all hover:scale-105",
-                    autoPopupIndex === i && "ring-4 ring-green-300 ring-offset-2"
+                    autoPopupIndex === i &&
+                      "ring-4 ring-green-300 ring-offset-2",
                   )}
                 >
                   <div className="flex items-center gap-2">
                     <span className="text-xl">{q.emoji}</span>
-                    <span className="text-[12px] font-semibold text-gray-800">{q.text}</span>
+                    <span className="text-[12px] font-semibold text-gray-800">
+                      {q.text}
+                    </span>
                   </div>
                 </button>
               ))}
@@ -371,13 +380,19 @@ export default function Sana() {
             <div className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 px-5 py-4 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full overflow-hidden bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                  <img src={logo} alt="Hospital logo" className="w-full h-full object-contain p-1" />
+                  <img
+                    src={logo}
+                    alt="Hospital logo"
+                    className="w-full h-full object-contain p-1"
+                  />
                 </div>
                 <div>
                   <h3 className="text-white font-semibold">{hospitalName}</h3>
                   <div className="flex items-center gap-2 mt-0.5">
                     <div className="w-2 h-2 bg-green-300 rounded-full animate-pulse" />
-                    <span className="text-white/90 text-xs">Sana AI • Online</span>
+                    <span className="text-white/90 text-xs">
+                      Sana AI • Online
+                    </span>
                   </div>
                 </div>
               </div>
@@ -387,8 +402,18 @@ export default function Sana() {
                   onClick={() => setIsOpen(false)}
                   className="w-9 h-9 rounded-lg bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors"
                 >
-                  <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  <svg
+                    className="w-5 h-5 text-white"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
                   </svg>
                 </button>
                 <button
@@ -399,8 +424,18 @@ export default function Sana() {
                   }}
                   className="w-9 h-9 rounded-lg bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors"
                 >
-                  <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <svg
+                    className="w-5 h-5 text-white"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                 </button>
               </div>
@@ -411,9 +446,15 @@ export default function Sana() {
               {messages.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center px-4">
                   <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-5 shadow-sm">
-                    <img src={logo} alt="Logo" className="w-14 h-14 object-contain" />
+                    <img
+                      src={logo}
+                      alt="Logo"
+                      className="w-14 h-14 object-contain"
+                    />
                   </div>
-                  <h4 className="text-xl font-semibold text-gray-900 mb-3">Welcome to {hospitalName}</h4>
+                  <h4 className="text-xl font-semibold text-gray-900 mb-3">
+                    Welcome to {hospitalName}
+                  </h4>
                   <p className="text-sm text-gray-600 mb-8 leading-relaxed">
                     Your AI-powered health assistant is here to help.
                   </p>
@@ -425,7 +466,9 @@ export default function Sana() {
                         className="w-full py-3.5 px-5 bg-white hover:bg-green-50 border border-gray-200 hover:border-green-300 rounded-xl text-left flex items-center gap-2 transition-colors shadow-sm"
                       >
                         <span className="text-xl">{q.emoji}</span>
-                        <span className="text-sm font-medium text-gray-800">{q.text}</span>
+                        <span className="text-sm font-medium text-gray-800">
+                          {q.text}
+                        </span>
                       </button>
                     ))}
                   </div>
@@ -444,7 +487,10 @@ export default function Sana() {
                       )}
 
                       <div
-                        className={cn("flex", msg.type === "user" ? "justify-end" : "justify-start")}
+                        className={cn(
+                          "flex",
+                          msg.type === "user" ? "justify-end" : "justify-start",
+                        )}
                         onMouseEnter={() => setHoveredMessage(msg.id)}
                         onMouseLeave={() => setHoveredMessage(null)}
                       >
@@ -454,7 +500,7 @@ export default function Sana() {
                               "px-4 py-3 rounded-2xl shadow-sm",
                               msg.type === "user"
                                 ? "bg-gradient-to-br from-green-600 to-emerald-700 text-white rounded-br-none"
-                                : "bg-gradient-to-br from-green-50 to-emerald-50 text-gray-900 border border-green-100 rounded-bl-none"
+                                : "bg-gradient-to-br from-green-50 to-emerald-50 text-gray-900 border border-green-100 rounded-bl-none",
                             )}
                           >
                             <div className="text-[15px] leading-relaxed whitespace-pre-wrap break-words">
@@ -462,16 +508,23 @@ export default function Sana() {
                                 <div
                                   key={i}
                                   className={cn(
-                                    line.trim() === "" ? "h-4" : "min-h-[1.5em]"
+                                    line.trim() === ""
+                                      ? "h-4"
+                                      : "min-h-[1.5em]",
                                   )}
                                 >
-                                  {line.split(/(\*\*.*?\*\*)/g).map((part, pi) =>
-                                    part.startsWith("**") && part.endsWith("**") ? (
-                                      <strong key={pi}>{part.slice(2, -2)}</strong>
-                                    ) : (
-                                      part
-                                    )
-                                  )}
+                                  {line
+                                    .split(/(\*\*.*?\*\*)/g)
+                                    .map((part, pi) =>
+                                      part.startsWith("**") &&
+                                      part.endsWith("**") ? (
+                                        <strong key={pi}>
+                                          {part.slice(2, -2)}
+                                        </strong>
+                                      ) : (
+                                        part
+                                      ),
+                                    )}
                                 </div>
                               ))}
                             </div>
@@ -480,15 +533,29 @@ export default function Sana() {
                           {msg.type === "ai" && hoveredMessage === msg.id && (
                             <div className="absolute -bottom-10 left-2 flex gap-2 bg-white rounded-lg shadow-md border px-2 py-1.5 text-xs animate-in fade-in slide-in-from-top-3">
                               <button
-                                onClick={() => handleCopyMessage(msg.content, msg.id)}
+                                onClick={() =>
+                                  handleCopyMessage(msg.content, msg.id)
+                                }
                                 className="flex items-center gap-1.5 hover:bg-gray-100 px-2 py-1 rounded transition-colors"
                               >
                                 {copiedId === msg.id ? (
-                                  <span className="text-green-600">Copied ✓</span>
+                                  <span className="text-green-600">
+                                    Copied ✓
+                                  </span>
                                 ) : (
                                   <>
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                    <svg
+                                      className="w-4 h-4"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                                      />
                                     </svg>
                                     Copy
                                   </>
@@ -498,8 +565,18 @@ export default function Sana() {
                                 onClick={() => handleReplyToMessage(msg)}
                                 className="flex items-center gap-1.5 hover:bg-gray-100 px-2 py-1 rounded transition-colors"
                               >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                                <svg
+                                  className="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
+                                  />
                                 </svg>
                                 Reply
                               </button>
@@ -532,15 +609,29 @@ export default function Sana() {
               {replyingTo && (
                 <div className="mb-3 px-4 py-2.5 bg-green-50 rounded-xl flex items-start justify-between gap-3 border-l-4 border-green-500 animate-in fade-in slide-in-from-bottom-3">
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-green-700 mb-1">Replying to:</p>
-                    <p className="text-sm text-gray-700 truncate leading-snug">{replyingTo.content}</p>
+                    <p className="text-xs font-medium text-green-700 mb-1">
+                      Replying to:
+                    </p>
+                    <p className="text-sm text-gray-700 truncate leading-snug">
+                      {replyingTo.content}
+                    </p>
                   </div>
                   <button
                     onClick={() => setReplyingTo(null)}
                     className="p-1.5 hover:bg-green-100 rounded-lg transition-colors shrink-0"
                   >
-                    <svg className="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    <svg
+                      className="w-4 h-4 text-gray-600"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
                     </svg>
                   </button>
                 </div>
@@ -561,15 +652,32 @@ export default function Sana() {
                   disabled={!inputValue.trim() || isTyping}
                   className="h-11 w-11 rounded-xl bg-gradient-to-br from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 disabled:opacity-50 transition-all shadow-sm flex items-center justify-center"
                 >
-                  <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2z" />
+                  <svg
+                    className="w-5 h-5 text-white"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 19l9 2-9-18-9 18 9-2z"
+                    />
                   </svg>
                 </Button>
               </div>
-
-              <a href="https://emrchains.com" className="text-xs text-gray-400 mt-3 text-center">
-                Powered by <span className="text-green-600 font-semibold">EMRChains</span>
-              </a>
+              <div  className="text-xs text-gray-400 mt-3 text-center">
+                <a
+                  href="https://emrchains.com"
+                  target="_blank"
+                >
+                  Powered by{" "}
+                  <span className="text-green-600 font-semibold">
+                    EMRChains
+                  </span>
+                </a>
+              </div>
             </div>
           </div>
         </div>
