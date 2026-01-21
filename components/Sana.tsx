@@ -567,9 +567,9 @@ export default function Sana() {
                 </Button>
               </div>
 
-              <div className="text-xs text-gray-400 mt-3 text-center">
+              <a href="https://emrchains.com" className="text-xs text-gray-400 mt-3 text-center">
                 Powered by <span className="text-green-600 font-semibold">EMRChains</span>
-              </div>
+              </a>
             </div>
           </div>
         </div>
