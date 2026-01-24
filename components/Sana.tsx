@@ -222,8 +222,6 @@ export default function Sana() {
       channel: "website",
     };
 
-    console.log("Sending payload to API:", payload);
-
     try {
       const res = await fetch(endpoint, {
         method: "POST",
