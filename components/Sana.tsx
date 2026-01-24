@@ -212,10 +212,7 @@ export default function Sana() {
     const payload = {
       unique_id: uniqueId,
       query: userMessage,
-      history: messages.slice(-10).map(msg => ({
-        role: msg.type === "user" ? "user" : "assistant",
-        content: msg.content,
-      })),
+      history: messages.slice(-10).map(msg => msg.content), // Send as array of strings
     };
 
     try {
