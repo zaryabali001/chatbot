@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @next/next/no-img-element */
 "use client";
 import { useState, useRef, useEffect } from "react";
@@ -77,7 +76,7 @@ export default function Sana() {
         }
       }
     }
-  }, [uniqueId]);
+  }, [uniqueId, isOpen]);
 
   // ── Save messages to localStorage ──
   useEffect(() => {
@@ -209,20 +208,21 @@ export default function Sana() {
         ? localStorage.getItem("sana_end_user_id") || null
         : null;
 
-    const chatHistoryText = messages
-      .map((m) => {
-        const who = m.type === "user" ? "User" : "Assistant";
-        return `${who}: ${m.content}`;
-      })
-      .join("\n");
+    // Build history array with all previous messages
+    const historyArray = messages.map((m) => ({
+      role: m.type === "user" ? "user" : "assistant",
+      content: m.content,
+    }));
 
     const payload = {
       unique_id: uniqueId,
       query: userMessage,
-      history: chatHistoryText,
+      history: historyArray,
       end_user_id: endUserId,
       channel: "website",
     };
+
+    console.log("Sending payload to API:", payload);
 
     try {
       const res = await fetch(endpoint, {
