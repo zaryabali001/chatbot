@@ -209,10 +209,17 @@ export default function Sana() {
     }
 
     const endpoint = getApiEndpoint();
+    
+    // Format history as array of objects with role and content
+    const formattedHistory = messages.slice(-10).map(msg => ({
+      role: msg.type === "user" ? "user" : "assistant",
+      content: msg.content
+    }));
+    
     const payload = {
       unique_id: uniqueId,
       query: userMessage,
-      history: messages.slice(-10).map(msg => msg.content),
+      history: formattedHistory,
     };
 
     try {
