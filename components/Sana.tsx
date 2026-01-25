@@ -210,21 +210,18 @@ export default function Sana() {
 
     const endpoint = getApiEndpoint();
     
-    // Format history as array of objects with role and content
-    const formattedHistory = messages.map(msg => ({
-      role: msg.type === "user" ? "user" : "assistant",
-      content: msg.content
-    }));
+    // Format history as array of strings (not objects)
+    const historyArray = messages.map(msg => 
+      `${msg.type === "user" ? "User" : "Assistant"}: ${msg.content}`
+    );
 
     // Also build chat_history string for the API
-    const chatHistoryString = messages
-      .map(m => `${m.type === "user" ? "User" : "Assistant"}: ${m.content}`)
-      .join("\n");
+    const chatHistoryString = historyArray.join("\n");
     
     const payload = {
       unique_id: uniqueId,
       query: userMessage,
-      history: formattedHistory,
+      history: historyArray,
       chat_history: chatHistoryString,
       end_user_id: typeof window !== "undefined" ? localStorage.getItem("sana_end_user_id") || "" : "",
       channel: "website",
