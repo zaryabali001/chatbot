@@ -18,7 +18,7 @@ interface Message {
 }
 
 export default function Sana() {
-  // ── Config states (loaded from localStorage + postMessage) ──
+  // ── Config states ──
   const [uniqueId, setUniqueId] = useState<string>(() => {
     return typeof window !== "undefined"
       ? localStorage.getItem("sana_unique_id") || ""
@@ -43,7 +43,7 @@ export default function Sana() {
       : "/emr.jpg";
   });
 
-  // ── UI / Chat states ──
+  // ── Chat states ──
   const [isOpen, setIsOpen] = useState(false);
   const [showQueries, setShowQueries] = useState(false);
   const [autoPopupIndex, setAutoPopupIndex] = useState(0);
@@ -59,6 +59,32 @@ export default function Sana() {
   const containerRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const autoPopupTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Load messages from localStorage
+  useEffect(() => {
+    if (!uniqueId) return;
+    const saved = localStorage.getItem(`sana_messages_${uniqueId}`);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setMessages(
+          parsed.map((m: any) => ({
+            ...m,
+            timestamp: new Date(m.timestamp),
+          }))
+        );
+      } catch (err) {
+        console.error("Failed to load messages", err);
+      }
+    }
+  }, [uniqueId]);
+
+  // Save messages whenever they change
+  useEffect(() => {
+    if (uniqueId && messages.length > 0) {
+      localStorage.setItem(`sana_messages_${uniqueId}`, JSON.stringify(messages));
+    }
+  }, [messages, uniqueId]);
 
   // ── Config sync via postMessage ──
   useEffect(() => {
@@ -124,8 +150,7 @@ export default function Sana() {
     autoPopupTimeoutRef.current = setTimeout(showNext, 1400);
 
     return () => {
-      if (autoPopupTimeoutRef.current)
-        clearTimeout(autoPopupTimeoutRef.current);
+      if (autoPopupTimeoutRef.current) clearTimeout(autoPopupTimeoutRef.current);
     };
   }, [isOpen]);
 
@@ -147,26 +172,16 @@ export default function Sana() {
   const formatResponse = (raw: string): string => {
     let text = raw.trim();
 
-    // 1. Extract real content if wrapped in JSON {"data": "..."}
     try {
       const parsed = JSON.parse(text);
       if (parsed && typeof parsed.data === "string") {
         text = parsed.data;
       }
-    } catch {
-      // not JSON → keep as is
-    }
+    } catch {}
 
-    // 2. Replace literal \n with actual line breaks
     text = text.replace(/\\n/g, "\n");
-
-    // 3. Clean up multiple empty lines
     text = text.replace(/\n\s*\n+/g, "\n\n").trim();
-
-    // 4. Bold numbered questions (1. Something? / 1. Something:)
     text = text.replace(/^(\d+\.\s+)(.*?)(:|\?)$/gm, "$1**$2$3**");
-
-    // 5. Normalize different bullet styles to markdown (-)
     text = text.replace(/^(\s*)([-*•—])\s+/gm, "$1- ");
 
     return text;
@@ -178,10 +193,18 @@ export default function Sana() {
     }
 
     const endpoint = getApiEndpoint();
+    const endUserId = localStorage.getItem("sana_end_user_id") || null;
+
+    const chatHistoryText = messages
+      .map((m) => `${m.type === "user" ? "User" : "Assistant"}: ${m.content}`)
+      .join("\n");
+
     const payload = {
       unique_id: uniqueId,
       query: userMessage,
-      history: [], // extend later if you want real history
+      history: chatHistoryText,           // ← correct field name
+      end_user_id: endUserId,
+      channel: "website",
     };
 
     try {
@@ -197,14 +220,21 @@ export default function Sana() {
 
       if (!res.ok) {
         const errText = await res.text().catch(() => "");
-        return `Server error (${res.status}): ${errText || "No details"}`;
+        if (res.status === 422) {
+          try {
+            const json = JSON.parse(errText);
+            const msg = json.detail?.[0]?.msg || "Invalid request format";
+            return `Validation error: ${msg}`;
+          } catch {}
+        }
+        return `Server error (${res.status}): ${errText || "No details provided"}`;
       }
 
       const text = await res.text();
       return formatResponse(text || "Thank you for your message.");
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      return `Connection failed: ${msg}. Check network or API endpoint.`;
+      return `Connection failed: ${msg}. Please check your internet or try again later.`;
     }
   };
 
@@ -224,9 +254,9 @@ export default function Sana() {
       case "assistant":
         content = "Talk to AI Health Assistant";
         break;
+      default:
+        return;
     }
-
-    if (!content) return;
 
     const userMsg: Message = {
       id: Date.now().toString(),
@@ -235,7 +265,8 @@ export default function Sana() {
       timestamp: new Date(),
     };
 
-    setMessages([userMsg]);
+    // Append — do NOT replace
+    setMessages((prev) => [...prev, userMsg]);
     setIsTyping(true);
 
     const aiText = await sendMessageToApi(content);
@@ -270,7 +301,6 @@ export default function Sana() {
     setIsTyping(true);
 
     const aiText = await sendMessageToApi(inputValue);
-
     setIsTyping(false);
 
     const aiMsg: Message = {
@@ -301,18 +331,18 @@ export default function Sana() {
     }
   };
 
+  const clearChat = () => {
+    setMessages([]);
+    if (uniqueId) {
+      localStorage.removeItem(`sana_messages_${uniqueId}`);
+    }
+    setReplyingTo(null);
+  };
+
   const queryOptions = [
-    {
-      emoji: "🩺",
-      text: "Book an Appointment",
-      type: "appointment" as QueryType,
-    },
+    { emoji: "🩺", text: "Book an Appointment", type: "appointment" as QueryType },
     { emoji: "📄", text: "I need information", type: "report" as QueryType },
-    {
-      emoji: "💬",
-      text: "Talk to AI Health Assistant",
-      type: "assistant" as QueryType,
-    },
+    { emoji: "💬", text: "Talk to AI Health Assistant", type: "assistant" as QueryType },
   ];
 
   return (
@@ -341,8 +371,7 @@ export default function Sana() {
                   onClick={() => handleQueryClick(q.type)}
                   className={cn(
                     "px-6 py-3 w-60 bg-white/80 border border-white/40 hover:border-green-400 rounded-full shadow-md hover:shadow-lg transition-all hover:scale-105",
-                    autoPopupIndex === i &&
-                      "ring-4 ring-green-300 ring-offset-2",
+                    autoPopupIndex === i && "ring-4 ring-green-300 ring-offset-2"
                   )}
                 >
                   <div className="flex items-center gap-2">
@@ -390,9 +419,7 @@ export default function Sana() {
                   <h3 className="text-white font-semibold">{hospitalName}</h3>
                   <div className="flex items-center gap-2 mt-0.5">
                     <div className="w-2 h-2 bg-green-300 rounded-full animate-pulse" />
-                    <span className="text-white/90 text-xs">
-                      Sana AI • Online
-                    </span>
+                    <span className="text-white/90 text-xs">Sana AI • Online</span>
                   </div>
                 </div>
               </div>
@@ -408,20 +435,11 @@ export default function Sana() {
                     viewBox="0 0 24 24"
                     stroke="currentColor"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
                 <button
-                  onClick={() => {
-                    setIsOpen(false);
-                    setMessages([]);
-                    setReplyingTo(null);
-                  }}
+                  onClick={() => setIsOpen(false)}
                   className="w-9 h-9 rounded-lg bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors"
                 >
                   <svg
@@ -430,12 +448,7 @@ export default function Sana() {
                     viewBox="0 0 24 24"
                     stroke="currentColor"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
@@ -446,11 +459,7 @@ export default function Sana() {
               {messages.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center px-4">
                   <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-5 shadow-sm">
-                    <img
-                      src={logo}
-                      alt="Logo"
-                      className="w-14 h-14 object-contain"
-                    />
+                    <img src={logo} alt="Logo" className="w-14 h-14 object-contain" />
                   </div>
                   <h4 className="text-xl font-semibold text-gray-900 mb-3">
                     Welcome to {hospitalName}
@@ -466,9 +475,7 @@ export default function Sana() {
                         className="w-full py-3.5 px-5 bg-white hover:bg-green-50 border border-gray-200 hover:border-green-300 rounded-xl text-left flex items-center gap-2 transition-colors shadow-sm"
                       >
                         <span className="text-xl">{q.emoji}</span>
-                        <span className="text-sm font-medium text-gray-800">
-                          {q.text}
-                        </span>
+                        <span className="text-sm font-medium text-gray-800">{q.text}</span>
                       </button>
                     ))}
                   </div>
@@ -489,7 +496,7 @@ export default function Sana() {
                       <div
                         className={cn(
                           "flex",
-                          msg.type === "user" ? "justify-end" : "justify-start",
+                          msg.type === "user" ? "justify-end" : "justify-start"
                         )}
                         onMouseEnter={() => setHoveredMessage(msg.id)}
                         onMouseLeave={() => setHoveredMessage(null)}
@@ -500,7 +507,7 @@ export default function Sana() {
                               "px-4 py-3 rounded-2xl shadow-sm",
                               msg.type === "user"
                                 ? "bg-gradient-to-br from-green-600 to-emerald-700 text-white rounded-br-none"
-                                : "bg-gradient-to-br from-green-50 to-emerald-50 text-gray-900 border border-green-100 rounded-bl-none",
+                                : "bg-gradient-to-br from-green-50 to-emerald-50 text-gray-900 border border-green-100 rounded-bl-none"
                             )}
                           >
                             <div className="text-[15px] leading-relaxed whitespace-pre-wrap break-words">
@@ -508,22 +515,17 @@ export default function Sana() {
                                 <div
                                   key={i}
                                   className={cn(
-                                    line.trim() === ""
-                                      ? "h-4"
-                                      : "min-h-[1.5em]",
+                                    line.trim() === "" ? "h-4" : "min-h-[1.5em]"
                                   )}
                                 >
                                   {line
                                     .split(/(\*\*.*?\*\*)/g)
                                     .map((part, pi) =>
-                                      part.startsWith("**") &&
-                                      part.endsWith("**") ? (
-                                        <strong key={pi}>
-                                          {part.slice(2, -2)}
-                                        </strong>
+                                      part.startsWith("**") && part.endsWith("**") ? (
+                                        <strong key={pi}>{part.slice(2, -2)}</strong>
                                       ) : (
                                         part
-                                      ),
+                                      )
                                     )}
                                 </div>
                               ))}
@@ -533,23 +535,14 @@ export default function Sana() {
                           {msg.type === "ai" && hoveredMessage === msg.id && (
                             <div className="absolute -bottom-10 left-2 flex gap-2 bg-white rounded-lg shadow-md border px-2 py-1.5 text-xs animate-in fade-in slide-in-from-top-3">
                               <button
-                                onClick={() =>
-                                  handleCopyMessage(msg.content, msg.id)
-                                }
+                                onClick={() => handleCopyMessage(msg.content, msg.id)}
                                 className="flex items-center gap-1.5 hover:bg-gray-100 px-2 py-1 rounded transition-colors"
                               >
                                 {copiedId === msg.id ? (
-                                  <span className="text-green-600">
-                                    Copied ✓
-                                  </span>
+                                  <span className="text-green-600">Copied ✓</span>
                                 ) : (
                                   <>
-                                    <svg
-                                      className="w-4 h-4"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      viewBox="0 0 24 24"
-                                    >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                       <path
                                         strokeLinecap="round"
                                         strokeLinejoin="round"
@@ -565,12 +558,7 @@ export default function Sana() {
                                 onClick={() => handleReplyToMessage(msg)}
                                 className="flex items-center gap-1.5 hover:bg-gray-100 px-2 py-1 rounded transition-colors"
                               >
-                                <svg
-                                  className="w-4 h-4"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
@@ -609,9 +597,7 @@ export default function Sana() {
               {replyingTo && (
                 <div className="mb-3 px-4 py-2.5 bg-green-50 rounded-xl flex items-start justify-between gap-3 border-l-4 border-green-500 animate-in fade-in slide-in-from-bottom-3">
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-green-700 mb-1">
-                      Replying to:
-                    </p>
+                    <p className="text-xs font-medium text-green-700 mb-1">Replying to:</p>
                     <p className="text-sm text-gray-700 truncate leading-snug">
                       {replyingTo.content}
                     </p>
@@ -626,12 +612,7 @@ export default function Sana() {
                       viewBox="0 0 24 24"
                       stroke="currentColor"
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M6 18L18 6M6 6l12 12"
-                      />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
                 </div>
@@ -658,25 +639,24 @@ export default function Sana() {
                     viewBox="0 0 24 24"
                     stroke="currentColor"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 19l9 2-9-18-9 18 9-2z"
-                    />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2z" />
                   </svg>
                 </Button>
               </div>
-              <div  className="text-xs text-gray-400 mt-3 text-center">
-                <a
-                  href="https://emrchains.com"
-                  target="_blank"
-                >
-                  Powered by{" "}
-                  <span className="text-green-600 font-semibold">
-                    EMRChains
-                  </span>
+
+              <div className="flex justify-between items-center text-xs text-gray-400 mt-3">
+                <a href="https://emrchains.com" target="_blank" rel="noopener noreferrer">
+                  Powered by <span className="text-green-600 font-semibold">EMRChains</span>
                 </a>
+
+                {messages.length > 0 && (
+                  <button
+                    onClick={clearChat}
+                    className="text-red-600 hover:text-red-800 underline transition-colors"
+                  >
+                    Clear chat
+                  </button>
+                )}
               </div>
             </div>
           </div>
