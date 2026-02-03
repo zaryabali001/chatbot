@@ -178,10 +178,32 @@ export default function Sana() {
     }
 
     const endpoint = getApiEndpoint();
+    // Build a simple textual chat history for the backend (User/Assistant pairs)
+    const endUserId =
+      typeof window !== "undefined"
+        ? localStorage.getItem("sana_end_user_id") || null
+        : null;
+
+    // Ensure the current user message is included in history even if state
+    // hasn't updated yet by appending it to the in-memory list.
+    const conversation = [
+      ...messages,
+      { id: Date.now().toString(), type: "user", content: userMessage, timestamp: new Date() } as Message,
+    ];
+
+    const chatHistoryText = conversation
+      .map((m) => {
+        const who = m.type === "user" ? "User" : "Assistant";
+        return `${who}: ${m.content}`;
+      })
+      .join("\n");
+
     const payload = {
       unique_id: uniqueId,
       query: userMessage,
-      history: [], // extend later if you want real history
+      chat_history: chatHistoryText,
+      end_user_id: endUserId,
+      channel: "website",
     };
 
     try {
