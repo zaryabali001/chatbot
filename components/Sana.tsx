@@ -202,6 +202,14 @@ export default function Sana() {
       unique_id: uniqueId,
       query: userMessage,
       chat_history: chatHistoryText,
+      // `history` is required by the Sana API (422 if missing). Provide
+      // a structured array of role/content objects and keep `chat_history`
+      // for backward compatibility.
+      history: conversation.map((m) => ({
+        role: m.type === "user" ? "user" : "assistant",
+        content: m.content,
+        timestamp: m.timestamp?.toString?.() || new Date().toISOString(),
+      })),
       end_user_id: endUserId,
       channel: "website",
     };
