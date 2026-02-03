@@ -60,7 +60,7 @@ export default function Sana() {
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const autoPopupTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Load messages from localStorage
+  // Load messages from localStorage when window opens or uniqueId changes
   useEffect(() => {
     if (!uniqueId) return;
     const saved = localStorage.getItem(`sana_messages_${uniqueId}`);
@@ -77,7 +77,7 @@ export default function Sana() {
         console.error("Failed to load messages", err);
       }
     }
-  }, [uniqueId]);
+  }, [uniqueId, isOpen]);
 
   // Save messages whenever they change
   useEffect(() => {
