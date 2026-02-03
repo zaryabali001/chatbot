@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @next/next/no-img-element */
 "use client";
 import { useState, useRef, useEffect } from "react";
@@ -61,7 +60,7 @@ export default function Sana() {
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const autoPopupTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Load saved messages when uniqueId changes
+  // Load saved messages
   useEffect(() => {
     if (!uniqueId) return;
     const saved = localStorage.getItem(`sana_messages_${uniqueId}`);
@@ -74,12 +73,12 @@ export default function Sana() {
         }));
         setMessages(restored);
       } catch (err) {
-        console.error("Failed to parse saved messages", err);
+        console.error("Failed to load saved messages", err);
       }
     }
   }, [uniqueId]);
 
-  // Save messages whenever they change
+  // Save messages
   useEffect(() => {
     if (uniqueId && messages.length > 0) {
       localStorage.setItem(`sana_messages_${uniqueId}`, JSON.stringify(messages));
@@ -128,7 +127,7 @@ export default function Sana() {
     scrollToBottom();
   }, [messages, isTyping]);
 
-  // Auto popup logic
+  // Auto popup
   useEffect(() => {
     if (isOpen || showQueries) return;
 
@@ -202,7 +201,7 @@ export default function Sana() {
     const payload = {
       unique_id: uniqueId,
       query: userMessage,
-      chat_history: chatHistoryText,
+      history: chatHistoryText,          // ← Changed from chat_history to history
       end_user_id: endUserId,
       channel: "website",
     };
@@ -220,6 +219,12 @@ export default function Sana() {
 
       if (!res.ok) {
         const errText = await res.text().catch(() => "");
+        if (res.status === 422) {
+          try {
+            const json = JSON.parse(errText);
+            return `Validation error: ${json.detail?.[0]?.msg || "Invalid request format"}`;
+          } catch {}
+        }
         return `Server error (${res.status}): ${errText || "No details"}`;
       }
 
@@ -421,7 +426,6 @@ export default function Sana() {
                 <button
                   onClick={() => setIsOpen(false)}
                   className="w-9 h-9 rounded-lg bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors"
-                  title="Close chat (history is kept)"
                 >
                   <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
