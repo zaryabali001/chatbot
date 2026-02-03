@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @next/next/no-img-element */
 "use client";
 import { useState, useRef, useEffect } from "react";
@@ -59,6 +60,31 @@ export default function Sana() {
   const containerRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const autoPopupTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Load messages from localStorage when uniqueId is available
+  useEffect(() => {
+    if (!uniqueId) return;
+    const saved = localStorage.getItem(`sana_messages_${uniqueId}`);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        // Convert string dates back to Date objects
+        const restored = parsed.map((m: any) => ({
+          ...m,
+          timestamp: new Date(m.timestamp),
+        }));
+        setMessages(restored);
+      } catch (err) {
+        console.error("Failed to load saved messages", err);
+      }
+    }
+  }, [uniqueId]);
+
+  // Save messages to localStorage whenever they change
+  useEffect(() => {
+    if (!uniqueId || messages.length === 0) return;
+    localStorage.setItem(`sana_messages_${uniqueId}`, JSON.stringify(messages));
+  }, [messages, uniqueId]);
 
   // ── Config sync via postMessage ──
   useEffect(() => {
@@ -124,8 +150,7 @@ export default function Sana() {
     autoPopupTimeoutRef.current = setTimeout(showNext, 1400);
 
     return () => {
-      if (autoPopupTimeoutRef.current)
-        clearTimeout(autoPopupTimeoutRef.current);
+      if (autoPopupTimeoutRef.current) clearTimeout(autoPopupTimeoutRef.current);
     };
   }, [isOpen]);
 
@@ -147,26 +172,18 @@ export default function Sana() {
   const formatResponse = (raw: string): string => {
     let text = raw.trim();
 
-    // 1. Extract real content if wrapped in JSON {"data": "..."}
     try {
       const parsed = JSON.parse(text);
       if (parsed && typeof parsed.data === "string") {
         text = parsed.data;
       }
     } catch {
-      // not JSON → keep as is
+      // not JSON
     }
 
-    // 2. Replace literal \n with actual line breaks
     text = text.replace(/\\n/g, "\n");
-
-    // 3. Clean up multiple empty lines
     text = text.replace(/\n\s*\n+/g, "\n\n").trim();
-
-    // 4. Bold numbered questions (1. Something? / 1. Something:)
     text = text.replace(/^(\d+\.\s+)(.*?)(:|\?)$/gm, "$1**$2$3**");
-
-    // 5. Normalize different bullet styles to markdown (-)
     text = text.replace(/^(\s*)([-*•—])\s+/gm, "$1- ");
 
     return text;
@@ -178,20 +195,12 @@ export default function Sana() {
     }
 
     const endpoint = getApiEndpoint();
-    // Build a simple textual chat history for the backend (User/Assistant pairs)
     const endUserId =
       typeof window !== "undefined"
         ? localStorage.getItem("sana_end_user_id") || null
         : null;
 
-    // Ensure the current user message is included in history even if state
-    // hasn't updated yet by appending it to the in-memory list.
-    const conversation = [
-      ...messages,
-      { id: Date.now().toString(), type: "user", content: userMessage, timestamp: new Date() } as Message,
-    ];
-
-    const chatHistoryText = conversation
+    const chatHistoryText = messages
       .map((m) => {
         const who = m.type === "user" ? "User" : "Assistant";
         return `${who}: ${m.content}`;
@@ -202,14 +211,6 @@ export default function Sana() {
       unique_id: uniqueId,
       query: userMessage,
       chat_history: chatHistoryText,
-      // `history` is required by the Sana API (422 if missing). Provide
-      // a structured array of role/content objects and keep `chat_history`
-      // for backward compatibility.
-      history: conversation.map((m) => ({
-        role: m.type === "user" ? "user" : "assistant",
-        content: m.content,
-        timestamp: m.timestamp?.toString?.() || new Date().toISOString(),
-      })),
       end_user_id: endUserId,
       channel: "website",
     };
@@ -265,7 +266,8 @@ export default function Sana() {
       timestamp: new Date(),
     };
 
-    setMessages([userMsg]);
+    // Append instead of replace → preserves history
+    setMessages((prev) => [...prev, userMsg]);
     setIsTyping(true);
 
     const aiText = await sendMessageToApi(content);
@@ -344,6 +346,14 @@ export default function Sana() {
       type: "assistant" as QueryType,
     },
   ];
+
+  const clearChat = () => {
+    setMessages([]);
+    if (uniqueId) {
+      localStorage.removeItem(`sana_messages_${uniqueId}`);
+    }
+    setReplyingTo(null);
+  };
 
   return (
     <>
@@ -449,10 +459,10 @@ export default function Sana() {
                 <button
                   onClick={() => {
                     setIsOpen(false);
-                    setMessages([]);
-                    setReplyingTo(null);
+                    // We no longer clear messages here → history persists
                   }}
                   className="w-9 h-9 rounded-lg bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors"
+                  title="Close (history kept)"
                 >
                   <svg
                     className="w-5 h-5 text-white"
@@ -697,16 +707,21 @@ export default function Sana() {
                   </svg>
                 </Button>
               </div>
-              <div  className="text-xs text-gray-400 mt-3 text-center">
-                <a
-                  href="https://emrchains.com"
-                  target="_blank"
-                >
-                  Powered by{" "}
-                  <span className="text-green-600 font-semibold">
-                    EMRChains
-                  </span>
-                </a>
+
+              <div className="flex justify-center text-xs text-gray-400 mt-3">
+                <div>
+                  <a
+                    href="https://emrchains.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Powered by{" "}
+                    <span className="text-green-600 font-semibold">
+                      EMRChains
+                    </span>
+                  </a>
+                </div>
+             
               </div>
             </div>
           </div>
