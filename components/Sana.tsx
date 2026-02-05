@@ -293,13 +293,6 @@ export default function Sana() {
     };
 
     setMessages((prev) => [...prev, aiMsg]);
-    
-    // Auto-copy AI response
-    try {
-      await navigator.clipboard.writeText(aiText.replace(/\{hospital_name\}/g, hospitalName));
-    } catch (err) {
-      console.error("Failed to auto-copy response:", err);
-    }
   };
 
   const handleSendMessage = async () => {
@@ -332,13 +325,6 @@ export default function Sana() {
     };
 
     setMessages((prev) => [...prev, aiMsg]);
-    
-    // Auto-copy AI response
-    try {
-      await navigator.clipboard.writeText(aiText.replace(/\{hospital_name\}/g, hospitalName));
-    } catch (err) {
-      console.error("Failed to auto-copy response:", err);
-    }
   };
 
   const handleCopyMessage = async (content: string, id: string) => {
