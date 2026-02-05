@@ -329,7 +329,20 @@ export default function Sana() {
 
   const handleCopyMessage = async (content: string, id: string) => {
     try {
-      await navigator.clipboard.writeText(content);
+      // Try modern clipboard API first
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(content);
+      } else {
+        // Fallback for older browsers or restricted environments
+        const textArea = document.createElement("textarea");
+        textArea.value = content;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-999999px";
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+      }
       setCopiedId(id);
       setTimeout(() => setCopiedId(null), 1600);
     } catch (err) {
