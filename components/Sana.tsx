@@ -67,6 +67,7 @@ export default function Sana() {
   });
   const [inputValue, setInputValue] = useState("");
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+  const [hoveredMessage, setHoveredMessage] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
 
@@ -75,6 +76,14 @@ export default function Sana() {
   const containerRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const autoPopupTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hoverDelayRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Clear hover delay on unmount
+  useEffect(() => {
+    return () => {
+      if (hoverDelayRef.current) clearTimeout(hoverDelayRef.current);
+    };
+  }, []);
 
   // ── Save chat history to localStorage ──
   useEffect(() => {
@@ -178,6 +187,7 @@ export default function Sana() {
   const formatResponse = (raw: string): string => {
     let text = raw.trim();
 
+    // 1. Extract real content if wrapped in JSON {"data": "..."}
     try {
       const parsed = JSON.parse(text);
       if (parsed && typeof parsed.data === "string") {
@@ -187,9 +197,16 @@ export default function Sana() {
       // not JSON → keep as is
     }
 
+    // 2. Replace literal \n with actual line breaks
     text = text.replace(/\\n/g, "\n");
+
+    // 3. Clean up multiple empty lines
     text = text.replace(/\n\s*\n+/g, "\n\n").trim();
+
+    // 4. Bold numbered questions (1. Something? / 1. Something:)
     text = text.replace(/^(\d+\.\s+)(.*?)(:|\?)$/gm, "$1**$2$3**");
+
+    // 5. Normalize different bullet styles to markdown (-)
     text = text.replace(/^(\s*)([-*•—])\s+/gm, "$1- ");
 
     return text;
@@ -317,7 +334,7 @@ export default function Sana() {
   };
 
   const handleCopyMessage = async (content: string, id: string) => {
-    // Strip markdown bold markers for clean copied text
+    // Clean markdown bold markers for better copy experience
     const cleanContent = content.replace(/\*\*(.*?)\*\*/g, "$1").trim();
 
     try {
@@ -328,15 +345,13 @@ export default function Sana() {
         textArea.value = cleanContent;
         textArea.style.position = "fixed";
         textArea.style.left = "-999999px";
-        textArea.style.top = "0";
         document.body.appendChild(textArea);
-        textArea.focus();
         textArea.select();
         document.execCommand("copy");
         document.body.removeChild(textArea);
       }
       setCopiedId(id);
-      setTimeout(() => setCopiedId(null), 2000);
+      setTimeout(() => setCopiedId(null), 1600);
     } catch (err) {
       console.error("Failed to copy:", err);
     }
@@ -554,6 +569,15 @@ export default function Sana() {
                           "flex",
                           msg.type === "user" ? "justify-end" : "justify-start",
                         )}
+                        onMouseEnter={() => {
+                          if (hoverDelayRef.current) clearTimeout(hoverDelayRef.current);
+                          setHoveredMessage(msg.id);
+                        }}
+                        onMouseLeave={() => {
+                          hoverDelayRef.current = setTimeout(() => {
+                            setHoveredMessage(null);
+                          }, 300);
+                        }}
                       >
                         <div className="max-w-[82%] relative group">
                           <div
@@ -564,69 +588,57 @@ export default function Sana() {
                                 : "bg-gradient-to-br from-green-50 to-emerald-50 text-gray-900 border border-green-100 rounded-bl-none",
                             )}
                           >
-                            {/* Message content */}
-                            <div
-                              className={cn(
-                                "text-[15px] leading-relaxed whitespace-pre-wrap break-words",
-                                msg.type === "ai" && "pb-12" // Space for action buttons
-                              )}
-                            >
+                            <div className="text-[15px] leading-relaxed whitespace-pre-wrap break-words">
                               {msg.content.split("\n").map((line, i) => (
                                 <div
                                   key={i}
                                   className={cn(
-                                    line.trim() === "" ? "h-4" : "min-h-[1.5em]"
+                                    line.trim() === ""
+                                      ? "h-4"
+                                      : "min-h-[1.5em]",
                                   )}
                                 >
                                   {line
                                     .split(/(\*\*.*?\*\*)/g)
                                     .map((part, pi) =>
-                                      part.startsWith("**") && part.endsWith("**") ? (
+                                      part.startsWith("**") &&
+                                      part.endsWith("**") ? (
                                         <strong key={pi}>
                                           {part.slice(2, -2)}
                                         </strong>
                                       ) : (
-                                        <span key={pi}>{part}</span>
-                                      )
+                                        part
+                                      ),
                                     )}
                                 </div>
                               ))}
                             </div>
+                          </div>
 
-                            {/* Action buttons - only for AI messages, shown on hover */}
-                            {msg.type === "ai" && (
-                              <div className="absolute bottom-3 left-3 right-3 flex justify-end opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none group-hover:pointer-events-auto">
-                                <div className="flex gap-3 bg-white/90 backdrop-blur-sm rounded-lg shadow-md px-4 py-2 border border-gray-200">
-                                  <button
-                                    onClick={() => handleCopyMessage(msg.content, msg.id)}
-                                    className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-green-600 transition-colors"
-                                  >
-                                    {copiedId === msg.id ? (
-                                      <span className="text-green-600 text-xs">Copied ✓</span>
-                                    ) : (
-                                      <>
-                                        <svg
-                                          className="w-4 h-4"
-                                          fill="none"
-                                          stroke="currentColor"
-                                          viewBox="0 0 24 24"
-                                        >
-                                          <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                                          />
-                                        </svg>
-                                        <span className="text-xs">Copy</span>
-                                      </>
-                                    )}
-                                  </button>
-
-                                  <button
-                                    onClick={() => handleReplyToMessage(msg)}
-                                    className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-green-600 transition-colors"
-                                  >
+                          {msg.type === "ai" && hoveredMessage === msg.id && (
+                            <div
+                              className="absolute -bottom-10 left-2 flex gap-2 bg-white rounded-lg shadow-md border px-2 py-1.5 text-xs animate-in fade-in slide-in-from-top-3"
+                              onMouseEnter={() => {
+                                if (hoverDelayRef.current) clearTimeout(hoverDelayRef.current);
+                              }}
+                              onMouseLeave={() => {
+                                hoverDelayRef.current = setTimeout(() => {
+                                  setHoveredMessage(null);
+                                }, 300);
+                              }}
+                            >
+                              <button
+                                onClick={() =>
+                                  handleCopyMessage(msg.content, msg.id)
+                                }
+                                className="flex items-center gap-1.5 hover:bg-gray-100 px-2 py-1 rounded transition-colors"
+                              >
+                                {copiedId === msg.id ? (
+                                  <span className="text-green-600">
+                                    Copied ✓
+                                  </span>
+                                ) : (
+                                  <>
                                     <svg
                                       className="w-4 h-4"
                                       fill="none"
@@ -637,15 +649,34 @@ export default function Sana() {
                                         strokeLinecap="round"
                                         strokeLinejoin="round"
                                         strokeWidth={2}
-                                        d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
+                                        d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
                                       />
                                     </svg>
-                                    <span className="text-xs">Reply</span>
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-                          </div>
+                                    Copy
+                                  </>
+                                )}
+                              </button>
+                              <button
+                                onClick={() => handleReplyToMessage(msg)}
+                                className="flex items-center gap-1.5 hover:bg-gray-100 px-2 py-1 rounded transition-colors"
+                              >
+                                <svg
+                                  className="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
+                                  />
+                                </svg>
+                                Reply
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -714,7 +745,7 @@ export default function Sana() {
                 <Button
                   onClick={handleSendMessage}
                   disabled={!inputValue.trim() || isTyping}
-                  className="h-11 w-11 rounded-xl bg-gradient-to-br from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 disabled:opacity-50 transition-all shadow-sm flex items-center justify-center"
+                  className="h-11 w-11 rounded-xl bg-linear-to-br from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 disabled:opacity-50 transition-all shadow-sm flex items-center justify-center"
                 >
                   <svg
                     className="w-6 h-6 text-white transform scale-110"
@@ -735,7 +766,6 @@ export default function Sana() {
                 <a
                   href="https://emrchains.com"
                   target="_blank"
-                  rel="noopener noreferrer"
                 >
                   Powered by{" "}
                   <span className="text-green-600 font-semibold">
