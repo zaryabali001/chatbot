@@ -327,10 +327,14 @@ export default function Sana() {
     setMessages((prev) => [...prev, aiMsg]);
   };
 
-  const handleCopyMessage = (content: string, id: string) => {
-    navigator.clipboard.writeText(content);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 1600);
+  const handleCopyMessage = async (content: string, id: string) => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 1600);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+    }
   };
 
   const handleReplyToMessage = (msg: Message) => {
@@ -430,11 +434,11 @@ export default function Sana() {
             {/* Header */}
             <div className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 px-5 py-4 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full overflow-hidden bg-white flex items-center justify-center shadow-sm">
+                <div className="w-10 h-10 rounded-full overflow-hidden bg-white/20 backdrop-blur-sm flex items-center justify-center">
                   <img
                     src={logo}
                     alt="Hospital logo"
-                    className="w-8 h-8 object-contain p-1 rounded-full bg-white"
+                    className="w-full h-full object-contain p-1"
                   />
                 </div>
                 <div>
@@ -521,7 +525,7 @@ export default function Sana() {
                     <img
                       src={logo}
                       alt="Logo"
-                      className="w-14 h-14 object-contain rounded-full bg-white p-1 shadow"
+                      className="w-14 h-14 object-contain"
                     />
                   </div>
                   <h4 className="text-xl font-semibold text-gray-900 mb-3">
@@ -725,7 +729,7 @@ export default function Sana() {
                 <Button
                   onClick={handleSendMessage}
                   disabled={!inputValue.trim() || isTyping}
-                  className="h-11 w-11 rounded-xl bg-gradient-to-br from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 disabled:opacity-50 transition-all shadow-sm flex items-center justify-center"
+                  className="h-11 w-11 rounded-xl bg-linear-to-br from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 disabled:opacity-50 transition-all shadow-sm flex items-center justify-center"
                 >
                   <svg
                     className="w-6 h-6 text-white transform scale-110"
