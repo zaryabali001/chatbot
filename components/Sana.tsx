@@ -255,9 +255,9 @@ export default function Sana() {
 
     let content = "";
     switch (type) {
-      case "appointment":
-        content = "Book an Appointment";
-        break;
+      // case "appointment":
+      //   content = "Book an Appointment";
+      //   break;
       case "report":
         content = "I need information";
         break;
@@ -367,11 +367,11 @@ export default function Sana() {
   };
 
   const queryOptions = [
-    {
-      emoji: "🩺",
-      text: "Book an Appointment",
-      type: "appointment" as QueryType,
-    },
+    // {
+    //   emoji: "🩺",
+    //   text: "Book an Appointment",
+    //   type: "appointment" as QueryType,
+    // },
     { emoji: "📄", text: "I need information", type: "report" as QueryType },
     {
       emoji: "💬",
