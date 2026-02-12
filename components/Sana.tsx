@@ -74,9 +74,9 @@ export default function Sana() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const autoPopupTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const hoverDelayRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoPopupTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hoverDelayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Cleanup hover timeout
   useEffect(() => {
@@ -324,26 +324,43 @@ export default function Sana() {
   };
 
   const handleCopyMessage = async (content: string, id: string) => {
+    // Remove markdown bold formatting and extra whitespace
     const cleanContent = content.replace(/\*\*(.*?)\*\*/g, "$1").trim();
 
     try {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(cleanContent);
-      } else {
-        const textArea = document.createElement("textarea");
-        textArea.value = cleanContent;
-        textArea.style.position = "fixed";
-        textArea.style.left = "-999999px";
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand("copy");
-        document.body.removeChild(textArea);
+      // Try modern Clipboard API first
+      if (navigator.clipboard?.writeText) {
+        try {
+          await navigator.clipboard.writeText(cleanContent);
+          setCopiedId(id);
+          setTimeout(() => setCopiedId(null), 2000);
+          return;
+        } catch (clipboardErr) {
+          console.error("Clipboard API failed, trying fallback:", clipboardErr);
+        }
       }
-      setCopiedId(id);
-      setTimeout(() => setCopiedId(null), 2000); // Slightly longer feedback
+
+      // Fallback method for older browsers or when Clipboard API fails
+      const textArea = document.createElement("textarea");
+      textArea.value = cleanContent;
+      textArea.style.position = "absolute";
+      textArea.style.left = "-9999px";
+      textArea.style.top = "-9999px";
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      
+      const successful = document.execCommand("copy");
+      document.body.removeChild(textArea);
+      
+      if (successful) {
+        setCopiedId(id);
+        setTimeout(() => setCopiedId(null), 2000);
+      } else {
+        console.error("Copy command was unsuccessful");
+      }
     } catch (err) {
       console.error("Copy failed:", err);
-      // Optional: alert("Copy failed – please select and copy manually");
     }
   };
 
