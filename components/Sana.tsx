@@ -400,7 +400,7 @@ export default function Sana() {
   return (
     <>
       {/* Floating button + quick actions popup */}
-      <div className="fixed bg-transparent bottom-2 right-6 z-9999 max-w-[calc(100vw-3rem)] pointer-events-none">
+      <div className="fixed bg-transparent bottom-2 right-2 sm:right-6 z-9999 max-w-[calc(100vw-3rem)] pointer-events-none">
         <div
           ref={containerRef}
           className="relative flex items-center gap-4 pointer-events-auto"
@@ -422,7 +422,7 @@ export default function Sana() {
                   key={q.type}
                   onClick={() => handleQueryClick(q.type)}
                   className={cn(
-                    "px-6 py-3 w-60 bg-white/80 border border-white/40 hover:border-green-400 rounded-full shadow-md hover:shadow-lg transition-all hover:scale-105",
+                    "px-6 py-3 w-full sm:w-60 bg-white/80 border border-white/40 hover:border-green-400 rounded-full shadow-md hover:shadow-lg transition-all hover:scale-105",
                     autoPopupIndex === i &&
                       "ring-4 ring-green-300 ring-offset-2",
                   )}
@@ -456,7 +456,7 @@ export default function Sana() {
 
       {/* Main Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 z-[9999] w-[380px] h-[620px] max-h-[calc(100vh-5rem)] max-w-[calc(100vw-2rem)] animate-in fade-in zoom-in-95 duration-400">
+        <div className="fixed bottom-6 right-2 sm:right-6 z-[9999] w-[90vw] max-w-[380px] h-[80vh] max-h-[620px] max-h-[calc(100vh-5rem)] animate-in fade-in zoom-in-95 duration-400">
           <div className="h-full bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-200 flex flex-col">
             {/* Header */}
             <div className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 px-5 py-4 flex items-center justify-between shrink-0">
