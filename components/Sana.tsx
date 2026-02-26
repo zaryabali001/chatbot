@@ -456,7 +456,7 @@ export default function Sana() {
 
       {/* Main Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-6 right-2 sm:right-6 z-[9999] w-[90vw] max-w-[380px] h-[80vh] max-h-[620px] max-h-[calc(100vh-5rem)] animate-in fade-in zoom-in-95 duration-400">
+        <div className="fixed bottom-6 right-2 sm:right-6 z-[9999] w-[90vw] sm:w-[380px] max-w-[380px] h-[90vh] sm:h-[620px] max-h-[calc(100vh-5rem)] animate-in fade-in zoom-in-95 duration-400">
           <div className="h-full bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-200 flex flex-col">
             {/* Header */}
             <div className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 px-5 py-4 flex items-center justify-between shrink-0">
