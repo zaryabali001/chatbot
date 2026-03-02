@@ -19,32 +19,24 @@ interface Message {
 }
 
 export default function Sana() {
-  // ── Config states (loaded from localStorage + postMessage) ──
-  const [uniqueId, setUniqueId] = useState<string>(() => {
-    return typeof window !== "undefined"
-      ? localStorage.getItem("sana_unique_id") || ""
-      : "";
-  });
+  // ── Config states ──
+  const [uniqueId, setUniqueId] = useState<string>(() =>
+    typeof window !== "undefined" ? localStorage.getItem("sana_unique_id") || "" : ""
+  );
 
-  const [hospitalName, setHospitalName] = useState<string>(() => {
-    return typeof window !== "undefined"
-      ? localStorage.getItem("sana_hospital_name") || "Your Hospital"
-      : "Your Hospital";
-  });
+  const [hospitalName, setHospitalName] = useState<string>(() =>
+    typeof window !== "undefined" ? localStorage.getItem("sana_hospital_name") || "Your Hospital" : "Your Hospital"
+  );
 
-  const [logo, setLogo] = useState<string>(() => {
-    return typeof window !== "undefined"
-      ? localStorage.getItem("sana_logo") || "/sana.png"
-      : "/sana.png";
-  });
+  const [logo, setLogo] = useState<string>(() =>
+    typeof window !== "undefined" ? localStorage.getItem("sana_logo") || "/sana.png" : "/sana.png"
+  );
 
-  const [buttonImage, setButtonImage] = useState<string>(() => {
-    return typeof window !== "undefined"
-      ? localStorage.getItem("sana_button_image") || "/emr.jpg"
-      : "/emr.jpg";
-  });
+  const [buttonImage, setButtonImage] = useState<string>(() =>
+    typeof window !== "undefined" ? localStorage.getItem("sana_button_image") || "/emr.jpg" : "/emr.jpg"
+  );
 
-  // ── UI / Chat states ──
+  // ── UI states ──
   const [isOpen, setIsOpen] = useState(false);
   const [showQueries, setShowQueries] = useState(false);
   const [autoPopupIndex, setAutoPopupIndex] = useState(0);
@@ -65,6 +57,7 @@ export default function Sana() {
     }
     return [];
   });
+
   const [inputValue, setInputValue] = useState("");
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [hoveredMessage, setHoveredMessage] = useState<string | null>(null);
@@ -78,21 +71,22 @@ export default function Sana() {
   const autoPopupTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hoverDelayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Cleanup hover timeout
+  // ── Effects ──
   useEffect(() => {
     return () => {
       if (hoverDelayRef.current) clearTimeout(hoverDelayRef.current);
     };
   }, []);
 
-  // ── Save chat history to localStorage ──
   useEffect(() => {
     if (typeof window !== "undefined") {
       try {
-        const serialized = JSON.stringify(messages.map(msg => ({
-          ...msg,
-          timestamp: msg.timestamp.toISOString(),
-        })));
+        const serialized = JSON.stringify(
+          messages.map((msg) => ({
+            ...msg,
+            timestamp: msg.timestamp.toISOString(),
+          }))
+        );
         localStorage.setItem("sana_chat_history", serialized);
       } catch (e) {
         console.error("Error saving chat history:", e);
@@ -100,7 +94,6 @@ export default function Sana() {
     }
   }, [messages]);
 
-  // ── Config sync via postMessage ──
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data.type === "SANA_CONFIG_UPDATE") {
@@ -110,17 +103,14 @@ export default function Sana() {
           setUniqueId(unique_id);
           localStorage.setItem("sana_unique_id", unique_id);
         }
-
         if (hospital_name) {
           setHospitalName(hospital_name);
           localStorage.setItem("sana_hospital_name", hospital_name);
         }
-
         if (logo) {
           setLogo(logo);
           localStorage.setItem("sana_logo", logo);
         }
-
         if (buttonImage) {
           setButtonImage(buttonImage);
           localStorage.setItem("sana_button_image", buttonImage);
@@ -134,15 +124,11 @@ export default function Sana() {
     return () => window.removeEventListener("message", handleMessage);
   }, []);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
   useEffect(() => {
-    scrollToBottom();
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
 
-  // Auto-popup sequence
+  // Auto popup sequence
   useEffect(() => {
     if (isOpen || showQueries) return;
 
@@ -164,8 +150,7 @@ export default function Sana() {
     autoPopupTimeoutRef.current = setTimeout(showNext, 1400);
 
     return () => {
-      if (autoPopupTimeoutRef.current)
-        clearTimeout(autoPopupTimeoutRef.current);
+      if (autoPopupTimeoutRef.current) clearTimeout(autoPopupTimeoutRef.current);
     };
   }, [isOpen]);
 
@@ -182,16 +167,14 @@ export default function Sana() {
     }, 400);
   };
 
+  // ── API & Formatting ──
   const getApiEndpoint = () => "/api/sana-chat";
 
   const formatResponse = (raw: string): string => {
     let text = raw.trim();
-
     try {
       const parsed = JSON.parse(text);
-      if (parsed && typeof parsed.data === "string") {
-        text = parsed.data;
-      }
+      if (parsed?.data && typeof parsed.data === "string") text = parsed.data;
     } catch {}
 
     text = text.replace(/\\n/g, "\n");
@@ -208,18 +191,15 @@ export default function Sana() {
     }
 
     const endpoint = getApiEndpoint();
-    
-    const historyArray = messages.map(msg => 
+    const historyArray = messages.map((msg) =>
       `${msg.type === "user" ? "User" : "Assistant"}: ${msg.content}`
     );
 
-    const chatHistoryString = historyArray.join("\n");
-    
     const payload = {
       unique_id: uniqueId,
       query: userMessage,
       history: historyArray,
-      chat_history: chatHistoryString,
+      chat_history: historyArray.join("\n"),
       end_user_id: typeof window !== "undefined" ? localStorage.getItem("sana_end_user_id") || "" : "",
       channel: "website",
     };
@@ -248,6 +228,7 @@ export default function Sana() {
     }
   };
 
+  // ── Handlers ──
   const handleQueryClick = async (type: QueryType) => {
     setIsOpen(true);
     setShowQueries(false);
@@ -255,17 +236,10 @@ export default function Sana() {
 
     let content = "";
     switch (type) {
-      case "appointment":
-        content = "Book an Appointment";
-        break;
-      case "report":
-        content = "I need information";
-        break;
-      case "assistant":
-        content = "Talk to AI Health Assistant";
-        break;
+      case "appointment": content = "Book an Appointment"; break;
+      case "report":      content = "I need information"; break;
+      case "assistant":   content = "Talk to AI Health Assistant"; break;
     }
-
     if (!content) return;
 
     const userMsg: Message = {
@@ -275,7 +249,7 @@ export default function Sana() {
       timestamp: new Date(),
     };
 
-    setMessages(prev => [...prev, userMsg]);
+    setMessages((prev) => [...prev, userMsg]);
     setIsTyping(true);
 
     const aiText = await sendMessageToApi(content);
@@ -299,9 +273,7 @@ export default function Sana() {
       type: "user",
       content: inputValue,
       timestamp: new Date(),
-      ...(replyingTo && {
-        replyTo: { id: replyingTo.id, content: replyingTo.content },
-      }),
+      ...(replyingTo && { replyTo: { id: replyingTo.id, content: replyingTo.content } }),
     };
 
     setMessages((prev) => [...prev, userMsg]);
@@ -310,7 +282,6 @@ export default function Sana() {
     setIsTyping(true);
 
     const aiText = await sendMessageToApi(inputValue);
-
     setIsTyping(false);
 
     const aiMsg: Message = {
@@ -324,41 +295,27 @@ export default function Sana() {
   };
 
   const handleCopyMessage = async (content: string, id: string) => {
-    // Remove markdown bold formatting and extra whitespace
     const cleanContent = content.replace(/\*\*(.*?)\*\*/g, "$1").trim();
 
     try {
-      // Try modern Clipboard API first
       if (navigator.clipboard?.writeText) {
-        try {
-          await navigator.clipboard.writeText(cleanContent);
-          setCopiedId(id);
-          setTimeout(() => setCopiedId(null), 2000);
-          return;
-        } catch (clipboardErr) {
-          console.error("Clipboard API failed, trying fallback:", clipboardErr);
-        }
+        await navigator.clipboard.writeText(cleanContent);
+        setCopiedId(id);
+        setTimeout(() => setCopiedId(null), 2000);
+        return;
       }
 
-      // Fallback method for older browsers or when Clipboard API fails
       const textArea = document.createElement("textarea");
       textArea.value = cleanContent;
       textArea.style.position = "absolute";
       textArea.style.left = "-9999px";
-      textArea.style.top = "-9999px";
       document.body.appendChild(textArea);
-      textArea.focus();
       textArea.select();
-      
-      const successful = document.execCommand("copy");
+      document.execCommand("copy");
       document.body.removeChild(textArea);
-      
-      if (successful) {
-        setCopiedId(id);
-        setTimeout(() => setCopiedId(null), 2000);
-      } else {
-        console.error("Copy command was unsuccessful");
-      }
+
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
     } catch (err) {
       console.error("Copy failed:", err);
     }
@@ -369,13 +326,6 @@ export default function Sana() {
     inputRef.current?.focus();
   };
 
-  const handleClearHistory = () => {
-    if (confirm("Are you sure you want to clear all chat history?")) {
-      setMessages([]);
-      localStorage.removeItem("sana_chat_history");
-    }
-  };
-
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -384,52 +334,44 @@ export default function Sana() {
   };
 
   const queryOptions = [
-    {
-      emoji: "🩺",
-      text: "Book an Appointment",
-      type: "appointment" as QueryType,
-    },
+    { emoji: "🩺", text: "Book an Appointment", type: "appointment" as QueryType },
     { emoji: "📄", text: "I need information", type: "report" as QueryType },
-    {
-      emoji: "💬",
-      text: "Talk to AI Health Assistant",
-      type: "assistant" as QueryType,
-    },
+    { emoji: "💬", text: "Talk to AI Health Assistant", type: "assistant" as QueryType },
   ];
 
+  // ── Render ──
   return (
     <>
       {/* Floating button + quick actions popup */}
-      <div className="fixed bg-transparent bottom-2 right-2 sm:right-6 z-9999 max-w-[calc(100vw-3rem)] pointer-events-none">
+      <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-[9999] pointer-events-none">
         <div
           ref={containerRef}
-          className="relative flex items-center gap-4 pointer-events-auto"
+          className="relative flex items-center gap-3 sm:gap-4 pointer-events-auto"
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
         >
           {!isOpen && (
-            <div className="absolute right-full mr-5 whitespace-nowrap pointer-events-none">
-              <span className="bg-gradient-to-r from-green-600 to-emerald-700 text-white text-sm font-medium px-4 py-2 rounded-full">
+            <div className="absolute right-full mr-3 sm:mr-5 whitespace-nowrap pointer-events-none">
+              <span className="bg-gradient-to-r from-green-600 to-emerald-700 text-white text-xs sm:text-sm font-medium px-3 sm:px-4 py-1.5 sm:py-2 rounded-full shadow-md">
                 Chat with Sana AI
               </span>
             </div>
           )}
 
           {showQueries && !isOpen && (
-            <div className="absolute bottom-20 right-0 flex flex-col gap-1 animate-in fade-in slide-in-from-bottom-5 duration-300">
+            <div className="absolute bottom-[4.5rem] sm:bottom-20 right-0 flex flex-col gap-2 sm:gap-3 min-w-[220px] sm:min-w-[260px] animate-in fade-in slide-in-from-bottom-5 duration-300">
               {queryOptions.map((q, i) => (
                 <button
                   key={q.type}
                   onClick={() => handleQueryClick(q.type)}
                   className={cn(
-                    "px-6 py-3 w-full sm:w-60 bg-white/80 border border-white/40 hover:border-green-400 rounded-full shadow-md hover:shadow-lg transition-all hover:scale-105",
-                    autoPopupIndex === i &&
-                      "ring-4 ring-green-300 ring-offset-2",
+                    "px-5 sm:px-6 py-3 sm:py-3.5 w-full bg-white/90 border border-white/30 hover:border-green-400 rounded-full shadow-md hover:shadow-xl transition-all hover:scale-[1.03] active:scale-100 text-left",
+                    autoPopupIndex === i && "ring-4 ring-green-300 ring-offset-2"
                   )}
                 >
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl">{q.emoji}</span>
-                    <span className="text-[12px] font-semibold text-gray-800">
+                  <div className="flex items-center gap-2.5 sm:gap-3">
+                    <span className="text-xl sm:text-2xl">{q.emoji}</span>
+                    <span className="text-sm sm:text-[13px] font-semibold text-gray-800 leading-tight">
                       {q.text}
                     </span>
                   </div>
@@ -441,7 +383,7 @@ export default function Sana() {
           {!isOpen && (
             <button
               onClick={() => setIsOpen(true)}
-              className="w-16 h-16 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 shadow-2xl hover:shadow-3xl transition-all duration-300 flex items-center justify-center relative group animate-pulse-slow"
+              className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 shadow-2xl hover:shadow-3xl transition-all duration-300 flex items-center justify-center relative group animate-pulse-slow"
             >
               <div className="absolute inset-0 rounded-full bg-green-400 opacity-25 animate-ping" />
               <img
@@ -456,331 +398,248 @@ export default function Sana() {
 
       {/* Main Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-6 right-2 sm:right-6 z-[9999] w-[90vw] sm:w-[380px] max-w-[380px] h-[90vh] sm:h-[620px] max-h-[calc(100vh-5rem)] animate-in fade-in zoom-in-95 duration-400">
-          <div className="h-full bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-200 flex flex-col">
-            {/* Header */}
-            <div className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 px-5 py-4 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full overflow-hidden bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                  <img
-                    src={logo}
-                    alt="Hospital logo"
-                    className="w-full h-full object-contain p-1"
-                  />
-                </div>
-                <div>
-                  <h3 className="text-white font-semibold">{hospitalName}</h3>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <div className="w-2 h-2 bg-green-300 rounded-full animate-pulse" />
-                    <span className="text-white/90 text-xs">
-                      Sana AI • Online
-                    </span>
-                  </div>
-                </div>
+        <div className="fixed inset-0 sm:inset-auto sm:bottom-6 sm:right-6 z-[9999] sm:w-[380px] sm:max-w-[90vw] sm:h-[min(620px,90vh)] h-full bg-white sm:rounded-2xl shadow-2xl overflow-hidden border border-gray-200 flex flex-col animate-in fade-in zoom-in-95 duration-300">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 px-4 sm:px-5 py-3 sm:py-4 flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-2.5 sm:gap-3">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full overflow-hidden bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <img src={logo} alt="Hospital logo" className="w-full h-full object-contain p-1" />
               </div>
-
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setIsOpen(false)}
-                  className="w-9 h-9 rounded-lg bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors"
-                >
-                  <svg
-                    className="w-5 h-5 text-white"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </button>
-                <button
-                  onClick={() => {
-                    setIsOpen(false);
-                    setMessages([]);
-                    setReplyingTo(null);
-                  }}
-                  className="w-9 h-9 rounded-lg bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors"
-                >
-                  <svg
-                    className="w-5 h-5 text-white"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
+              <div>
+                <h3 className="text-white font-semibold text-base sm:text-lg">{hospitalName}</h3>
+                <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5">
+                  <div className="w-2 h-2 bg-green-300 rounded-full animate-pulse" />
+                  <span className="text-white/90 text-xs sm:text-sm">Sana AI • Online</span>
+                </div>
               </div>
             </div>
 
-            {/* Messages area */}
-            <div className="flex-1 overflow-y-auto px-5 py-6 bg-gradient-to-b from-gray-50/70 to-white">
-              {messages.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-center px-4">
-                  <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-5 shadow-sm">
-                    <img
-                      src={logo}
-                      alt="Logo"
-                      className="w-14 h-14 object-contain"
-                    />
-                  </div>
-                  <h4 className="text-xl font-semibold text-gray-900 mb-3">
-                    Welcome to {hospitalName}
-                  </h4>
-                  <p className="text-sm text-gray-600 mb-8 leading-relaxed">
-                    Your AI-powered health assistant is here to help.
-                  </p>
-                  <div className="w-full space-y-1">
-                    {queryOptions.map((q) => (
-                      <button
-                        key={q.type}
-                        onClick={() => handleQueryClick(q.type)}
-                        className="w-full py-3.5 px-5 bg-white hover:bg-green-50 border border-gray-200 hover:border-green-300 rounded-xl text-left flex items-center gap-2 transition-colors shadow-sm"
-                      >
-                        <span className="text-xl">{q.emoji}</span>
-                        <span className="text-sm font-medium text-gray-800">
-                          {q.text}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-5">
-                  <div className="text-xs text-gray-500 text-center mb-2">
-                    Chat history loaded ({messages.length} messages)
-                  </div>
-                  {messages.map((msg) => (
-                    <div key={msg.id}>
-                      {msg.replyTo && msg.type === "user" && (
-                        <div className="flex justify-end mb-1.5">
-                          <div className="max-w-[78%] px-3 py-2 bg-gray-100/80 rounded-lg text-xs text-gray-600 italic border-l-3 border-green-400">
-                            ↳ {msg.replyTo.content.substring(0, 60)}
-                            {msg.replyTo.content.length > 60 ? "..." : ""}
-                          </div>
-                        </div>
-                      )}
-
-                      <div
-                        className={cn(
-                          "flex",
-                          msg.type === "user" ? "justify-end" : "justify-start",
-                        )}
-                        onMouseEnter={() => {
-                          if (hoverDelayRef.current) clearTimeout(hoverDelayRef.current);
-                          setHoveredMessage(msg.id);
-                        }}
-                        onMouseLeave={() => {
-                          hoverDelayRef.current = setTimeout(() => {
-                            setHoveredMessage(null);
-                          }, 800); // Increased delay – gives plenty of time to reach the toolbar
-                        }}
-                      >
-                        <div className="max-w-[82%] relative group">
-                          <div
-                            className={cn(
-                              "px-4 py-3 rounded-2xl shadow-sm",
-                              msg.type === "user"
-                                ? "bg-gradient-to-br from-green-600 to-emerald-700 text-white rounded-br-none"
-                                : "bg-gradient-to-br from-green-50 to-emerald-50 text-gray-900 border border-green-100 rounded-bl-none",
-                            )}
-                          >
-                            <div className="text-[15px] leading-relaxed whitespace-pre-wrap break-words">
-                              {msg.content.split("\n").map((line, i) => (
-                                <div
-                                  key={i}
-                                  className={cn(
-                                    line.trim() === ""
-                                      ? "h-4"
-                                      : "min-h-[1.5em]",
-                                  )}
-                                >
-                                  {line
-                                    .split(/(\*\*.*?\*\*)/g)
-                                    .map((part, pi) =>
-                                      part.startsWith("**") &&
-                                      part.endsWith("**") ? (
-                                        <strong key={pi}>
-                                          {part.slice(2, -2)}
-                                        </strong>
-                                      ) : (
-                                        part
-                                      ),
-                                    )}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-
-                          {msg.type === "ai" && hoveredMessage === msg.id && (
-                            <div
-                              className="absolute -bottom-10 left-2 flex gap-2 bg-white rounded-lg shadow-md border px-2 py-1.5 text-xs animate-in fade-in slide-in-from-top-3 z-10"
-                              onMouseEnter={() => {
-                                if (hoverDelayRef.current) clearTimeout(hoverDelayRef.current);
-                              }}
-                              onMouseLeave={() => {
-                                hoverDelayRef.current = setTimeout(() => {
-                                  setHoveredMessage(null);
-                                }, 800); // Same increased delay
-                              }}
-                            >
-                              <button
-                                onClick={() =>
-                                  handleCopyMessage(msg.content, msg.id)
-                                }
-                                className="flex items-center gap-1.5 hover:bg-gray-100 px-2 py-1 rounded transition-colors"
-                              >
-                                {copiedId === msg.id ? (
-                                  <span className="text-green-600 font-medium">
-                                    Copied ✓
-                                  </span>
-                                ) : (
-                                  <>
-                                    <svg
-                                      className="w-4 h-4"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      viewBox="0 0 24 24"
-                                    >
-                                      <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                                      />
-                                    </svg>
-                                    Copy
-                                  </>
-                                )}
-                              </button>
-                              <button
-                                onClick={() => handleReplyToMessage(msg)}
-                                className="flex items-center gap-1.5 hover:bg-gray-100 px-2 py-1 rounded transition-colors"
-                              >
-                                <svg
-                                  className="w-4 h-4"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
-                                  />
-                                </svg>
-                                Reply
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-
-                  {isTyping && (
-                    <div className="flex justify-start">
-                      <div className="px-5 py-3.5 bg-green-50/60 rounded-2xl rounded-bl-none border border-green-100">
-                        <div className="flex gap-1.5">
-                          <div className="w-2.5 h-2.5 bg-gray-400 rounded-full animate-bounce [animation-delay:0ms]" />
-                          <div className="w-2.5 h-2.5 bg-gray-400 rounded-full animate-bounce [animation-delay:180ms]" />
-                          <div className="w-2.5 h-2.5 bg-gray-400 rounded-full animate-bounce [animation-delay:360ms]" />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  <div ref={messagesEndRef} />
-                </div>
-              )}
+            <div className="flex gap-1.5 sm:gap-2">
+              <button
+                onClick={() => setIsOpen(false)}
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors"
+              >
+                <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              <button
+                onClick={() => {
+                  setIsOpen(false);
+                  setMessages([]);
+                  setReplyingTo(null);
+                }}
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors"
+              >
+                <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
+          </div>
 
-            {/* Input area */}
-            <div className="shrink-0 px-5 py-4 bg-white border-t border-gray-200">
-              {replyingTo && (
-                <div className="mb-3 px-4 py-2.5 bg-green-50 rounded-xl flex items-start justify-between gap-3 border-l-4 border-green-500 animate-in fade-in slide-in-from-bottom-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-green-700 mb-1">
-                      Replying to:
-                    </p>
-                    <p className="text-sm text-gray-700 truncate leading-snug">
-                      {replyingTo.content}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setReplyingTo(null)}
-                    className="p-1.5 hover:bg-green-100 rounded-lg transition-colors shrink-0"
-                  >
-                    <svg
-                      className="w-4 h-4 text-gray-600"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
+          {/* Messages area */}
+          <div className="flex-1 overflow-y-auto px-4 sm:px-5 py-5 sm:py-6 bg-gradient-to-b from-gray-50/70 to-white">
+            {messages.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-center px-4 sm:px-6">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-green-100 rounded-full flex items-center justify-center mb-4 sm:mb-5 shadow-sm">
+                  <img src={logo} alt="Logo" className="w-12 h-12 sm:w-14 sm:h-14 object-contain" />
+                </div>
+                <h4 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2 sm:mb-3">
+                  Welcome to {hospitalName}
+                </h4>
+                <p className="text-sm text-gray-600 mb-6 sm:mb-8 leading-relaxed max-w-xs">
+                  Your AI-powered health assistant is here to help.
+                </p>
+                <div className="w-full space-y-2 sm:space-y-3 max-w-sm">
+                  {queryOptions.map((q) => (
+                    <button
+                      key={q.type}
+                      onClick={() => handleQueryClick(q.type)}
+                      className="w-full py-3 sm:py-3.5 px-4 sm:px-5 bg-white hover:bg-green-50 border border-gray-200 hover:border-green-300 rounded-xl text-left flex items-center gap-2.5 sm:gap-3 transition-colors shadow-sm"
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-                  </button>
+                      <span className="text-xl sm:text-2xl">{q.emoji}</span>
+                      <span className="text-sm sm:text-base font-medium text-gray-800">{q.text}</span>
+                    </button>
+                  ))}
                 </div>
-              )}
+              </div>
+            ) : (
+              <div className="space-y-4 sm:space-y-5">
+                <div className="text-xs text-gray-500 text-center mb-3">
+                  Chat history loaded ({messages.length} messages)
+                </div>
 
-              <div className="flex items-end gap-2">
-                <textarea
-                  ref={inputRef}
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Type your message..."
-                  rows={1}
-                  className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none max-h-32 transition-all placeholder:text-gray-400"
-                />
-                <Button
-                  onClick={handleSendMessage}
-                  disabled={!inputValue.trim() || isTyping}
-                  className="h-11 w-11 rounded-xl bg-linear-to-br from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 disabled:opacity-50 transition-all shadow-sm flex items-center justify-center"
+                {messages.map((msg) => (
+                  <div key={msg.id}>
+                    {msg.replyTo && msg.type === "user" && (
+                      <div className="flex justify-end mb-1.5">
+                        <div className="max-w-[80%] sm:max-w-[78%] px-3 py-2 bg-gray-100/80 rounded-lg text-xs text-gray-600 italic border-l-3 border-green-400">
+                          ↳ {msg.replyTo.content.substring(0, 60)}
+                          {msg.replyTo.content.length > 60 ? "..." : ""}
+                        </div>
+                      </div>
+                    )}
+
+                    <div
+                      className={cn(
+                        "flex",
+                        msg.type === "user" ? "justify-end" : "justify-start"
+                      )}
+                      onMouseEnter={() => {
+                        if (hoverDelayRef.current) clearTimeout(hoverDelayRef.current);
+                        setHoveredMessage(msg.id);
+                      }}
+                      onMouseLeave={() => {
+                        hoverDelayRef.current = setTimeout(() => setHoveredMessage(null), 800);
+                      }}
+                    >
+                      <div className="max-w-[85%] sm:max-w-[82%] relative group">
+                        <div
+                          className={cn(
+                            "px-4 py-3 rounded-2xl shadow-sm text-[14.5px] sm:text-[15px] leading-relaxed whitespace-pre-wrap break-words",
+                            msg.type === "user"
+                              ? "bg-gradient-to-br from-green-600 to-emerald-700 text-white rounded-br-none"
+                              : "bg-gradient-to-br from-green-50 to-emerald-50 text-gray-900 border border-green-100 rounded-bl-none"
+                          )}
+                        >
+                          {msg.content.split("\n").map((line, i) => (
+                            <div key={i} className={cn(line.trim() === "" ? "h-4" : "min-h-[1.5em]")}>
+                              {line
+                                .split(/(\*\*.*?\*\*)/g)
+                                .map((part, pi) =>
+                                  part.startsWith("**") && part.endsWith("**") ? (
+                                    <strong key={pi}>{part.slice(2, -2)}</strong>
+                                  ) : (
+                                    part
+                                  )
+                                )}
+                            </div>
+                          ))}
+                        </div>
+
+                        {msg.type === "ai" && hoveredMessage === msg.id && (
+                          <div
+                            className="absolute -bottom-10 left-2 flex gap-2 bg-white rounded-lg shadow-md border px-2 py-1.5 text-xs animate-in fade-in slide-in-from-top-3 z-10 pointer-events-auto"
+                            onMouseEnter={() => {
+                              if (hoverDelayRef.current) clearTimeout(hoverDelayRef.current);
+                            }}
+                            onMouseLeave={() => {
+                              hoverDelayRef.current = setTimeout(() => setHoveredMessage(null), 800);
+                            }}
+                          >
+                            <button
+                              onClick={() => handleCopyMessage(msg.content, msg.id)}
+                              className="flex items-center gap-1.5 hover:bg-gray-100 px-2 py-1 rounded transition-colors"
+                            >
+                              {copiedId === msg.id ? (
+                                <span className="text-green-600 font-medium">Copied ✓</span>
+                              ) : (
+                                <>
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                                    />
+                                  </svg>
+                                  Copy
+                                </>
+                              )}
+                            </button>
+                            <button
+                              onClick={() => handleReplyToMessage(msg)}
+                              className="flex items-center gap-1.5 hover:bg-gray-100 px-2 py-1 rounded transition-colors"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
+                                />
+                              </svg>
+                              Reply
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                {isTyping && (
+                  <div className="flex justify-start">
+                    <div className="px-5 py-3.5 bg-green-50/60 rounded-2xl rounded-bl-none border border-green-100">
+                      <div className="flex gap-1.5">
+                        <div className="w-2.5 h-2.5 bg-gray-400 rounded-full animate-bounce [animation-delay:0ms]" />
+                        <div className="w-2.5 h-2.5 bg-gray-400 rounded-full animate-bounce [animation-delay:180ms]" />
+                        <div className="w-2.5 h-2.5 bg-gray-400 rounded-full animate-bounce [animation-delay:360ms]" />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div ref={messagesEndRef} />
+              </div>
+            )}
+          </div>
+
+          {/* Input area */}
+          <div className="shrink-0 px-4 sm:px-5 py-3 sm:py-4 bg-white border-t border-gray-200">
+            {replyingTo && (
+              <div className="mb-3 px-3 sm:px-4 py-2 sm:py-2.5 bg-green-50 rounded-xl flex items-start justify-between gap-2 sm:gap-3 border-l-4 border-green-500 animate-in fade-in slide-in-from-bottom-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-green-700 mb-0.5 sm:mb-1">Replying to:</p>
+                  <p className="text-sm text-gray-700 truncate leading-snug">{replyingTo.content}</p>
+                </div>
+                <button
+                  onClick={() => setReplyingTo(null)}
+                  className="p-1 sm:p-1.5 hover:bg-green-100 rounded-lg transition-colors shrink-0"
                 >
-                  <svg
-                    className="w-6 h-6 text-white transform scale-110"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 19l9 2-9-18-9 18 9-2z"
-                    />
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
-                </Button>
+                </button>
               </div>
-              <div className="text-xs text-gray-400 mt-3 text-center">
-                <a
-                  href="https://emrchains.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
+            )}
+
+            <div className="flex items-end gap-2 sm:gap-3">
+              <textarea
+                ref={inputRef}
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Type your message..."
+                rows={1}
+                className="flex-1 px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none max-h-32 transition-all placeholder:text-gray-400"
+              />
+              <Button
+                onClick={handleSendMessage}
+                disabled={!inputValue.trim() || isTyping}
+                className="h-10 sm:h-11 w-10 sm:w-11 rounded-xl bg-gradient-to-br from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 disabled:opacity-50 transition-all shadow-sm flex items-center justify-center shrink-0"
+              >
+                <svg
+                  className="w-5 h-5 sm:w-6 sm:h-6 text-white transform scale-110"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
                 >
-                  Powered by{" "}
-                  <span className="text-green-600 font-semibold">
-                    EMRChains
-                  </span>
-                </a>
-              </div>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 19l9 2-9-18-9 18 9-2z"
+                  />
+                </svg>
+              </Button>
+            </div>
+
+            <div className="text-xs text-gray-400 mt-2 sm:mt-3 text-center">
+              <a href="https://emrchains.com" target="_blank" rel="noopener noreferrer">
+                Powered by <span className="text-green-600 font-semibold">EMRChains</span>
+              </a>
             </div>
           </div>
         </div>
