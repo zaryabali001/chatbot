@@ -343,7 +343,7 @@ export default function Sana() {
   return (
     <>
       {/* Floating button + quick actions popup */}
-      <div className="fixed bottom-3 right-3 xs:bottom-4 xs:right-4 sm:bottom-6 sm:right-6 lg:bottom-8 lg:right-8 z-[9999] pointer-events-none">
+      <div className="fixed bottom-3 right-3 xs:bottom-4 xs:right-4 sm:bottom-6 sm:right-6 lg:bottom-8 lg:right-8 z-[999999] pointer-events-none" style={{ position: 'fixed' }}>
         <div
           ref={containerRef}
           className="relative flex flex-col-reverse xs:flex-row items-center gap-2 xs:gap-3 sm:gap-4 pointer-events-auto"
@@ -398,7 +398,7 @@ export default function Sana() {
 
       {/* Main Chat Window */}
       {isOpen && (
-        <div className="fixed inset-0 xs:inset-0 sm:inset-auto sm:bottom-6 sm:right-6 lg:bottom-8 lg:right-8 z-9999 w-full xs:max-w-[calc(100vw-24px)] sm:w-[380px] md:w-[400px] lg:w-[420px] max-w-[90vw] h-screen xs:h-[calc(100vh-48px)] sm:h-[620px] lg:h-[600px] bg-white sm:rounded-2xl rounded-none shadow-2xl overflow-hidden border border-gray-200 flex flex-col animate-in fade-in zoom-in-95 duration-300">
+        <div className="fixed inset-0 xs:inset-0 sm:inset-auto sm:bottom-6 sm:right-6 lg:bottom-8 lg:right-8 z-[999999] w-full xs:max-w-[calc(100vw-24px)] sm:w-[380px] md:w-[400px] lg:w-[420px] max-w-[90vw] h-screen xs:h-[calc(100vh-48px)] sm:h-[620px] lg:h-[600px] bg-white sm:rounded-2xl rounded-none shadow-2xl overflow-hidden border border-gray-200 flex flex-col animate-in fade-in zoom-in-95 duration-300" style={{ position: 'fixed', isolation: 'isolate' }}>
           {/* Header */}
           <div className="bg-linear-to-r from-green-600 via-emerald-600 to-teal-600 px-3 xs:px-4 sm:px-5 py-2.5 xs:py-3 sm:py-4 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2 xs:gap-2.5 sm:gap-3 flex-1">

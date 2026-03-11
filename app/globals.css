@@ -168,6 +168,25 @@
       padding-right: max(0.5rem, env(safe-area-inset-right));
     }
   }
+
+  /* WordPress plugin compatibility styles */
+  #sana-chatbot-root,
+  .sana-chatbot-container {
+    position: fixed !important;
+    z-index: 999999 !important;
+    all: revert;
+  }
+
+  /* Ensure chatbot elements bypass WordPress theme styles */
+  #sana-chatbot-root * {
+    all: revert;
+  }
+
+  /* Fixed position for WordPress compatibility */
+  [class*="fixed"] {
+    position: fixed !important;
+    z-index: 999999 !important;
+  }
 }
 
 
